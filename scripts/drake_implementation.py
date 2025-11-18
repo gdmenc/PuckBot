@@ -676,6 +676,57 @@ directives:
         
         self.diagram.ForcedPublish(self.context)
 
+    def set_robot_joint_positions(self, robot_model, q):
+        """
+        Set joint positions for specified robot model.
+
+        Args:
+            robot_model: Instance of robot model
+            q: Joint position array
+        """
+        self.plant.SetPositions(self.plant_context, robot_model, q)
+
+    def get_robot_joint_positions(self, robot_model):
+        """
+        Get joint positions for specified robot model.
+
+        Args:
+            robot_model: Robot model instance
+
+        Returns:
+            Joint position array
+        """
+        return self.plant.GetPositions(self.plant_context, robot_model)
+
+    def initialize_motion_controllers(self):
+        """
+        Initializes simple motion controllers for both robots.
+        """
+        from simple_motion_controller import SimpleMotionController
+
+        if hasattr(self, 'robot1_model') and self.robot1_model is not None:
+            try:
+                self.motion_controller_1 = SimpleMotionController(
+                    self.plant,
+                    self.robot1_model,
+                    "robot1/tool_body"
+                )
+                print("✓ Motion controller initialized for robot 1")
+            except Exception as e:
+                print(f"✗ Failed to initialize controller for robot 1: {e}")
+                self.motion_controller_1 = None
+        
+        if hasattr(self, 'robot2_model') and self.robot2_model is not None:
+            try:
+                self.motion_controller_2 = SimpleMotionController(
+                    self.plant,
+                    self.robot2_model,
+                    "robot2/tool_body"
+                )
+                print("✓ Motion controller initialized for robot 2")
+            except Exception as e:
+                print(f"✗ Failed to initialize controller for robot 2: {e}")
+                self.motion_controller_2 = None
 
 def main():
     print("Creating Drake Air Hockey Environment...")
