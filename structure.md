@@ -1,3 +1,49 @@
+# PuckBot - Codebase Architecture
+
+## Architecture Overview - Layered Design
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER                            │
+│  simulation.py - Main game loop, orchestration, scoring         │
+└─────────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    STRATEGY LAYER                               │
+│  strategy/                                                       │
+│    - puck_prediction.py    (trajectory forecasting)             │
+│    - defensive_strategy.py (blocking logic)                     │
+│    - offensive_strategy.py (shot selection)                     │
+│    - zone_based_strategy.py (Fig 2 from proposal)              │
+└─────────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    CONTROL LAYER                                │
+│  scripts/                                                        │
+│    - simple_motion_controller.py (IK + trajectories)            │
+│    - trajectory_executor.py      (real-time execution)          │
+└─────────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    PHYSICS LAYER                                │
+│  scripts/                                                        │
+│    - drake_implementation.py (environment, robots, puck)        │
+└─────────────────────────────────────────────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    UTILITY LAYER                                │
+│  utils/                                                          │
+│    - geometry.py    (collision detection, line intersections)   │
+│    - kinematics.py  (FK/IK helpers)                            │
+│    - constants.py   (table dimensions, zones, limits)          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Detailed File Structure
+
+```
 PuckBot/
 ├── simulation.py                     # Main entry point & game loop
 │
@@ -33,39 +79,41 @@ PuckBot/
 ├── requirements.txt                  # Dependencies (EXISTING)
 ├── README.md                         # Documentation
 └── proposal.tex                      # Project proposal (EXISTING)
+```
 
+## Data Flow
 
-┌─────────────────────────────────────────────────────────────────┐
-│                    APPLICATION LAYER                            │
-│  simulation.py - Main game loop, orchestration, scoring         │
-└─────────────────────────────────────────────────────────────────┘
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    STRATEGY LAYER                               │
-│  strategy/                                                       │
-│    - puck_prediction.py    (trajectory forecasting)             │
-│    - defensive_strategy.py (blocking logic)                     │
-│    - offensive_strategy.py (shot selection)                     │
-│    - zone_based_strategy.py (Fig 2 from proposal)              │
-└─────────────────────────────────────────────────────────────────┘
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    CONTROL LAYER                                │
-│  scripts/                                                        │
-│    - simple_motion_controller.py (IK + trajectories)            │
-│    - trajectory_executor.py      (real-time execution)          │
-└─────────────────────────────────────────────────────────────────┘
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    PHYSICS LAYER                                │
-│  scripts/                                                        │
-│    - drake_implementation.py (environment, robots, puck)        │
-└─────────────────────────────────────────────────────────────────┘
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    UTILITY LAYER                                │
-│  utils/                                                          │
-│    - geometry.py    (collision detection, line intersections)   │
-│    - kinematics.py  (FK/IK helpers)                            │
-│    - constants.py   (table dimensions, zones, limits)          │
-└─────────────────────────────────────────────────────────────────┘
+```
+┌─────────────┐
+│   Sensors   │ (Puck position, velocity, robot states)
+└──────┬──────┘
+       │
+       ▼
+┌─────────────────┐
+│ Puck Predictor  │ → Future puck trajectory
+└──────┬──────────┘
+       │
+       ▼
+┌─────────────────┐
+│   Strategy      │ → Intercept point, strike target
+│  (Off/Def)      │
+└──────┬──────────┘
+       │
+       ▼
+┌─────────────────┐
+│ Motion Planner  │ → Joint trajectory
+│ (IK + Interp)   │
+└──────┬──────────┘
+       │
+       ▼
+┌─────────────────┐
+│Traj Executor    │ → Joint positions each timestep
+└──────┬──────────┘
+       │
+       ▼
+┌─────────────────┐
+│  Drake Sim      │ → Updated world state
+└──────┬──────────┘
+       │
+       └─────→ (loop back to sensors)
+```
