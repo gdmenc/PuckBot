@@ -676,28 +676,6 @@ directives:
         
         self.diagram.ForcedPublish(self.context)
 
-    def set_robot_joint_positions(self, robot_model, q):
-        """
-        Set joint positions for specified robot model.
-
-        Args:
-            robot_model: Instance of robot model
-            q: Joint position array
-        """
-        self.plant.SetPositions(self.plant_context, robot_model, q)
-
-    def get_robot_joint_positions(self, robot_model):
-        """
-        Get joint positions for specified robot model.
-
-        Args:
-            robot_model: Robot model instance
-
-        Returns:
-            Joint position array
-        """
-        return self.plant.GetPositions(self.plant_context, robot_model)
-
     def initialize_motion_controllers(self):
         """
         Initializes simple motion controllers for both robots.
