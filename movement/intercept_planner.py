@@ -21,7 +21,6 @@ class RobotConfig:
 class InterceptPlanner:
     """
     Plans intercept trajectories for a robot to reach a predicted puck position.
-    Combines puck prediction, IK solving, and trajectory generation.
     """
 
     def __init__(
