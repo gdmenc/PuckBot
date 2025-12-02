@@ -1,2 +1,19 @@
 --extra-index-url https://drake-packages.csail.mit.edu/whl/nightly
 manipulation==2025.10.20
+
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.7.1
+
+mujoco==3.3.1
+osqp>=0.6.2.post8
+nlopt>=2.7.1
+mushroom-rl==1.10.1
+drake
+PyYAML>=6.0
+
+git+https://github.com/huaweicloud/huaweicloud-sdk-python-obs.git#egg=esdk-obs-python&subdirectory=src
+
+dm_control
+jax==0.5.3
+
+git+https://github.com/araffin/sbx@1e5e43356765587a89db3178cecc15bb56f49b02
