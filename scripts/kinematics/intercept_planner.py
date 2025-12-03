@@ -210,3 +210,46 @@ class InterceptPlanner:
             t_end=robot.t + duration,
             dt=dt
         )
+
+    def plan_to_position(
+        self,
+        target_position: NDArray[np.float64],
+        current_q: NDArray[np.float64],
+        context,
+        duration: float = 2.0,
+        dt: float = 0.01
+    ) -> Tuple[bool, Optional[JointTrajectory]]:
+        """
+        Plan a trajectory to reach a specific 3D position.
+        
+        Args:
+            target_position: [x, y, z] target in world frame
+            current_q: Current joint positions
+            context: Plant context for IK
+            duration: Motion duration
+            dt: Time step
+            
+        Returns:
+            (success, trajectory)
+        """
+        success, q_target = self._solve_ik(target_position, current_q, context)
+        
+        if not success:
+            return False, None
+            
+        # Simple check for timing
+        if not self._is_time_feasible(current_q, q_target, duration):
+            # Could potentially stretch duration here if needed
+            print(f"Warning: Motion might exceed velocity limits for duration {duration}s")
+            
+        t_now = context.get_time()
+        
+        trajectory = self._generate_trajectory(
+            q_start=current_q,
+            q_end=q_target,
+            t_start=t_now,
+            t_end=t_now + duration,
+            dt=dt
+        )
+        
+        return True, trajectory

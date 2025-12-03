@@ -62,7 +62,7 @@ class GameController:
         
         # Create paddle grasper
         from scripts.env.paddle_grasper import PaddleGrasper
-        from scripts.simple_motion_controller import SimpleMotionController
+        from scripts.kinematics.motion_controller import MotionController
         
         if self.robot_id == 1:
             robot_model = self.env.robot1_model
@@ -71,10 +71,9 @@ class GameController:
             robot_model = self.env.robot2_model
             tool_frame = "robot2/tool_body"
         
-        motion_controller = SimpleMotionController(
-            self.env.plant,
-            robot_model,
-            tool_frame
+        motion_controller = MotionController(
+            self.env,
+            self.robot_id
         )
         
         self.paddle_grasper = PaddleGrasper(

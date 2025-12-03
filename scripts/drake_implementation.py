@@ -700,16 +700,15 @@ directives:
 
     def initialize_motion_controllers(self):
         """
-        Initializes simple motion controllers for both robots.
+        Initializes motion controllers for both robots.
         """
-        from simple_motion_controller import SimpleMotionController
+        from kinematics.motion_controller import MotionController
 
         if hasattr(self, 'robot1_model') and self.robot1_model is not None:
             try:
-                self.motion_controller_1 = SimpleMotionController(
-                    self.plant,
-                    self.robot1_model,
-                    "robot1/tool_body"
+                self.motion_controller_1 = MotionController(
+                    self,
+                    robot_id=1
                 )
                 print("✓ Motion controller initialized for robot 1")
             except Exception as e:
@@ -718,10 +717,9 @@ directives:
         
         if hasattr(self, 'robot2_model') and self.robot2_model is not None:
             try:
-                self.motion_controller_2 = SimpleMotionController(
-                    self.plant,
-                    self.robot2_model,
-                    "robot2/tool_body"
+                self.motion_controller_2 = MotionController(
+                    self,
+                    robot_id=2
                 )
                 print("✓ Motion controller initialized for robot 2")
             except Exception as e:

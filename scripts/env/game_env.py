@@ -406,13 +406,16 @@ directives:
         return self.paddle_grasped
 
     def initialize_motion_controllers(self):
-        from scripts.simple_motion_controller import SimpleMotionController
+        from scripts.kinematics.motion_controller import MotionController
 
-        self.motion_controller_1 = SimpleMotionController(
-            self.plant, self.robot1_model, "robot1/tool_body"
-        )
-        self.motion_controller_2 = SimpleMotionController(
-            self.plant, self.robot2_model, "robot2/tool_body"
-        )
+        if hasattr(self, 'robot1_model') and self.robot1_model is not None:
+            self.motion_controller_1 = MotionController(
+                self, robot_id=1
+            )
+        
+        if hasattr(self, 'robot2_model') and self.robot2_model is not None:
+            self.motion_controller_2 = MotionController(
+                self, robot_id=2
+            )
 
 

@@ -9,7 +9,7 @@ from pydrake.all import (
     SpatialVelocity,
 )
 from typing import Optional, Tuple
-from scripts.simple_motion_controller import SimpleMotionController
+from scripts.kinematics.motion_controller import MotionController
 
 
 class PaddleGrasper:
@@ -27,7 +27,7 @@ class PaddleGrasper:
         env,
         robot_model,
         tool_frame_name: str,
-        motion_controller: Optional[SimpleMotionController] = None
+        motion_controller: Optional[MotionController] = None
     ):
         """
         Args:
@@ -41,10 +41,10 @@ class PaddleGrasper:
         self.tool_frame_name = tool_frame_name
         
         if motion_controller is None:
-            self.motion_controller = SimpleMotionController(
-                env.plant,
-                robot_model,
-                tool_frame_name
+            robot_id = 1 if "robot1" in tool_frame_name else 2
+            self.motion_controller = MotionController(
+                env,
+                robot_id=robot_id
             )
         else:
             self.motion_controller = motion_controller
@@ -129,8 +129,9 @@ class PaddleGrasper:
         Returns:
             True if motion completed successfully
         """
-        success, trajectory = self.motion_controller.move_to_position(
+        success, trajectory = self.motion_controller.planner.plan_to_position(
             target_position,
+            self.env.get_robot_joint_positions(self.robot_model),
             self.env.plant_context,
             duration=duration,
             dt=dt
@@ -140,7 +141,8 @@ class PaddleGrasper:
             return False
         
         # Execute trajectory
-        for q in trajectory:
+        for i in range(trajectory.n_points):
+            q = trajectory.positions[i]
             self.env.set_robot_joint_positions(self.robot_model, q)
             self.env.step(duration=dt)
             self.env.diagram.ForcedPublish(self.env.context)
