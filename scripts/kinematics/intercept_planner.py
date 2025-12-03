@@ -151,11 +151,21 @@ class InterceptPlanner:
 
         prog = ik.prog()
         q_vars = ik.q()
-        prog.SetInitialGuess(q_vars, seed_q)
+
+        # IK expects a guess vector for the entire plant configuration, not just this robot.
+        full_q_guess = self.plant.GetPositions(context).copy()
+        context_guess = self.plant.CreateDefaultContext()
+        self.plant.SetPositions(context_guess, self.robot_model, seed_q)
+        full_q_guess = self.plant.GetPositions(context_guess)
+        prog.SetInitialGuess(q_vars, full_q_guess)
 
         result = Solve(prog)
         if result.is_success():
-            return True, result.GetSolution(q_vars)
+            q_solution_full = result.GetSolution(q_vars)
+            context_solution = self.plant.CreateDefaultContext()
+            self.plant.SetPositions(context_solution, q_solution_full)
+            q_robot = self.plant.GetPositions(context_solution, self.robot_model)
+            return True, q_robot
         else:
             return False, seed_q
 

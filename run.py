@@ -4,7 +4,7 @@ Integrates paddle grasping and gameplay using Drake simulation.
 """
 from pathlib import Path
 from datetime import datetime
-from argparse import ArgumentParser
+from argparse import ArgumentParser, BooleanOptionalAction
 import time
 
 from scripts.env.game_env import AirHockeyGameEnv
@@ -58,8 +58,15 @@ def get_args():
 
     arg_test.add_argument(
         "--random_puck",
+        action=BooleanOptionalAction,
+        default=True,
+        help="Start puck with random velocity (use --no-random_puck to disable)"
+    )
+
+    arg_test.add_argument(
+        "--enable_paddle",
         action="store_true",
-        help="Start puck with random velocity"
+        help="Include paddle + side table (defaults to disabled for testing)"
     )
 
     args = vars(parser.parse_args())
@@ -79,6 +86,7 @@ def main():
     print(f"  Control dt: {args['control_dt']}s")
     print(f"  Skip grasp: {args['skip_grasp']}")
     print(f"  Random puck: {args['random_puck']}")
+    print(f"  Include paddle: {args['enable_paddle']}")
     
     # Create game environment
     print("\n" + "="*70)
@@ -87,7 +95,8 @@ def main():
     
     env = AirHockeyGameEnv(
         time_step=args['time_step'],
-        use_meshcat=not args['no_meshcat']
+        use_meshcat=not args['no_meshcat'],
+        include_paddle=args['enable_paddle']
     )
     
     # Reset environment

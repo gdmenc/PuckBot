@@ -50,6 +50,11 @@ class GameController:
         Returns:
             True if initialization successful
         """
+        if not getattr(self.env, "include_paddle", True) or self.env.paddle_body is None:
+            print("Paddle disabled in environment; skipping grasp.")
+            self.game_started = True
+            return True
+
         if self.env.is_paddle_grasped():
             print("Paddle already grasped!")
             self.paddle_grasped = True

@@ -30,8 +30,7 @@ import sys
 
 try:
     import air_hockey_challenge
-    AHC_PACKAGE_PATH = os.path.dirname(air_hockey_challenge.__file__)
-    DATA_PATH = os.path.join(AHC_PACKAGE_PATH, "environments", "data")
+
 except ImportError:
     script_dir = os.path.dirname(os.path.abspath(__file__))
     DATA_PATH = os.path.join(script_dir, "..", "air_hockey_challenge", 
