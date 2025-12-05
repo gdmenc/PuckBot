@@ -157,17 +157,6 @@ class AirHockeyGameEnv:
             props,
         )
 
-        # Center lines / markings for improved visuals
-        marking_shape = Box(table_length * 0.95, 0.01, 0.002)
-        X_mark = RigidTransform(p=[0, 0, self.table_height + 0.001])
-        self.plant.RegisterVisualGeometry(
-            self.plant.world_body(),
-            X_mark,
-            marking_shape,
-            "table_marking_center",
-            [0.8, 0.0, 0.0, 1.0],
-        )
-
     def _add_table_rims(self) -> None:
         rim_height = 0.03
         rim_thickness = 0.045
@@ -207,18 +196,19 @@ class AirHockeyGameEnv:
             [table_length, rim_thickness, rim_height],
         )
 
-        # goal walls
+        # goal openings (break rim into two segments per side)
         goal_width = 0.394
-        add_rim_box(
-            "rim_home",
-            [-table_length / 2 - rim_thickness / 2, 0, top_z],
-            [rim_thickness, goal_width, rim_height],
-        )
-        add_rim_box(
-            "rim_away",
-            [table_length / 2 + rim_thickness / 2, 0, top_z],
-            [rim_thickness, goal_width, rim_height],
-        )
+        gap = goal_width
+        segment_width = max(0.05, (table_width - gap) / 2)
+        for side, x_sign in (("home", -1), ("away", 1)):
+            x_pos = x_sign * (table_length / 2 + rim_thickness / 2)
+            for seg_sign in (-1, 1):
+                y_center = seg_sign * (gap / 2 + segment_width / 2)
+                add_rim_box(
+                    f"rim_{side}_{'upper' if seg_sign > 0 else 'lower'}",
+                    [x_pos, y_center, top_z],
+                    [rim_thickness, segment_width, rim_height],
+                )
 
         # Decorative rim meshes if available
         rim_mesh_path = self.assets_root / "mjx" / "assets" / "table_rim.stl"
@@ -253,7 +243,7 @@ directives:
     parent: world
     child: iiwa_robot1::iiwa_link_0
     X_PC:
-        translation: [-1.51, 0, 0.0]
+        translation: [-1.35, 0, 0.0]
         rotation: !Rpy { deg: [0, 0, 180] }
 - add_model:
     name: iiwa_robot2
@@ -262,7 +252,7 @@ directives:
     parent: world
     child: iiwa_robot2::iiwa_link_0
     X_PC:
-        translation: [1.51, 0, 0.0]
+        translation: [1.35, 0, 0.0]
         rotation: !Rpy { deg: [0, 0, 0] }
 """
         import tempfile
@@ -520,7 +510,7 @@ directives:
     # ----------------------------------------------------------------- public API
     # ----------------------------------------------------------------- core API
     def _generate_random_puck_velocity(self):
-        speed = np.random.uniform(0.5, 2.0)
+        speed = np.random.uniform(4, 10)
         angle = np.random.uniform(0, 2 * np.pi)
         return [speed * np.cos(angle), speed * np.sin(angle), 0.0]
 
@@ -535,7 +525,7 @@ directives:
             puck_pos = np.asarray(puck_pos)
         if puck_vel is None:
             puck_vel = (
-                self._generate_random_puck_velocity() if random_velocity else [0.0, 0.0, 0.0]
+                self._generate_random_puck_velocity() if random_velocity else [2.0, 2.0, 0.0]
             )
 
         self.puck_x_joint.set_translation(self.plant_context, puck_pos[0])
