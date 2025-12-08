@@ -1,77 +1,51 @@
 """
 Main entry point for Air Hockey Robot Game
-Integrates paddle grasping and gameplay using Drake simulation.
 """
-from pathlib import Path
-from datetime import datetime
-from argparse import ArgumentParser, BooleanOptionalAction
+from argparse import ArgumentParser
 import time
+import numpy as np
+import sys
 
-from scripts.env.game_env import AirHockeyGameEnv
-from scripts.kinematics.game_controller import GameController
-
+from scripts.env.configure import create_air_hockey_simulation, initialize_puck, initialize_paddles, initialize_robots
 
 def get_args():
     parser = ArgumentParser(description="Air Hockey Robot Game")
-    arg_test = parser.add_argument_group("simulation parameters")
-
-    arg_test.add_argument(
+    
+    parser.add_argument(
         "--time_step",
         type=float,
         default=0.001,
         help="Simulation time step (seconds)"
     )
 
-    arg_test.add_argument(
+    parser.add_argument(
         "--game_duration",
         type=float,
         default=30.0,
         help="Game duration in seconds"
     )
-
-    arg_test.add_argument(
-        "--control_dt",
-        type=float,
-        default=0.02,
-        help="Control loop time step (seconds)"
-    )
-
-    arg_test.add_argument(
-        "--robot_id",
+    
+    parser.add_argument(
+        "--num_arms",
         type=int,
-        default=1,
+        default=2,
         choices=[1, 2],
-        help="Which robot to control (1 or 2)"
+        help="Number of robot arms in the simulation (1 or 2)"
     )
 
-    arg_test.add_argument(
-        "--skip_grasp",
-        action="store_true",
-        help="Skip paddle grasping (assume paddle already grasped)"
-    )
-
-    arg_test.add_argument(
+    parser.add_argument(
         "--no_meshcat",
         action="store_true",
         help="Disable Meshcat visualization"
     )
-
-    arg_test.add_argument(
-        "--random_puck",
-        action=BooleanOptionalAction,
-        default=True,
-        help="Start puck with random velocity (use --no-random_puck to disable)"
-    )
-
-    arg_test.add_argument(
-        "--enable_paddle",
+    parser.add_argument(
+        "--skip-grasp",
         action="store_true",
-        help="Include paddle + side table (defaults to disabled for testing)"
+        help="Skip grasping sequence and weld paddles directly to grippers"
     )
 
-    args = vars(parser.parse_args())
+    args = parser.parse_args()
     return args
-
 
 def main():
     args = get_args()
@@ -79,111 +53,107 @@ def main():
     print("="*70)
     print("AIR HOCKEY ROBOT GAME")
     print("="*70)
-    print(f"\nConfiguration:")
-    print(f"  Robot ID: {args['robot_id']}")
-    print(f"  Time step: {args['time_step']}s")
-    print(f"  Game duration: {args['game_duration']}s")
-    print(f"  Control dt: {args['control_dt']}s")
-    print(f"  Skip grasp: {args['skip_grasp']}")
-    print(f"  Random puck: {args['random_puck']}")
-    print(f"  Include paddle: {args['enable_paddle']}")
+    print(f"Configuration:")
+    print(f"  Num Arms: {args.num_arms}")
+    print(f"  Time step: {args.time_step}s")
+    print(f"  Game duration: {args.game_duration}s")
     
     # Create game environment
     print("\n" + "="*70)
     print("Initializing Environment...")
     print("="*70)
     
-    env = AirHockeyGameEnv(
-        time_step=args['time_step'],
-        use_meshcat=not args['no_meshcat'],
-        include_paddle=args['enable_paddle']
+    # Updated to unpack 4 values
+    simulator, meshcat, plant, diagram = create_air_hockey_simulation(
+        num_arms=args.num_arms,
+        time_step=args.time_step,
+        use_meshcat=not args.no_meshcat,
+        skip_grasp=args.skip_grasp
     )
     
-    # Reset environment
-    env.reset(random_velocity=args['random_puck'], reset_paddle=True)
+    # Positions are now initialized inside create_air_hockey_simulation()
     
-    if not args['no_meshcat']:
-        meshcat_url = env.meshcat.web_url()
-        print(f"\nMeshcat visualization: {meshcat_url}")
+    if meshcat:
+        print(f"\nMeshcat visualization: {meshcat.web_url()}")
         print("Open this URL in your browser to view the simulation")
         time.sleep(1)  # Give user time to open browser
     
-    # Create game controller
-    print("\n" + "="*70)
-    print("Creating Game Controller...")
-    print("="*70)
-    
-    controller = GameController(
-        env=env,
-        robot_id=args['robot_id'],
-        auto_grasp=not args['skip_grasp']
-    )
-    
-    # Initialize (grasp paddle if needed)
-    if not args['skip_grasp']:
+    # Grasping sequence (skip if --skip-grasp flag is set)
+    if not args.skip_grasp:
         print("\n" + "="*70)
-        print("Grasping Paddle...")
+        print("Executing Grasp Sequence...")
         print("="*70)
-        
-        success = controller.initialize()
-        if not success:
-            print("\nERROR: Failed to initialize robot!")
-            print("Exiting...")
-            return
-        
-        # Brief pause after grasping
-        print("\nPaddle grasped! Preparing for gameplay...")
-        time.sleep(1)
-    else:
-        # Assume paddle is already grasped
-        controller.paddle_grasped = True
-        controller.game_started = True
-        print("\nSkipping paddle grasp (assuming already grasped)")
     
+        try:
+            from scripts.env.sim_adapter import SimAdapter
+            from scripts.grasp.paddle_grasper import PaddleGrasper
+            
+            adapter = SimAdapter(simulator, plant, diagram, meshcat=meshcat)
+            
+            robots_to_grasp = []
+            if adapter.robot2_model:  # Right
+                robots_to_grasp.append((adapter.robot2_model, "body", 2))
+        
+            if args.num_arms == 2 and adapter.robot1_model:  # Left
+                robots_to_grasp.append((adapter.robot1_model, "body", 1))
+                
+            for model, frame_name, robot_id in robots_to_grasp:
+                print(f"\n[GRASP] Starting grasp sequence for Robot {robot_id}...")
+                adapter.set_active_paddle_for_robot(robot_id)
+                
+                gripper_name = "left_wsg" if robot_id == 1 else "right_wsg"
+                try:
+                    gripper_model = plant.GetModelInstanceByName(gripper_name)
+                except:
+                    gripper_model = None
+        
+                grasper = PaddleGrasper(
+                    adapter,
+                    model, 
+                    tool_frame_name=frame_name,
+                    tool_model_instance=gripper_model
+                )
+                
+                success = grasper.execute_grasp_sequence()
+                if not success:
+                    print(f"[ERROR] Grasp failed for Robot {robot_id}!")
+                    
+        except ImportError as e:
+            print(f"[WARNING] Skipping grasping sequence due to missing modules: {e}")
+        except Exception as e:
+            print(f"[ERROR] Grasping sequence encountered an error: {e}")
+            import traceback
+            traceback.print_exc()
+    else:
+        print("\n[INFO] Grasping skipped (paddles welded to grippers)")
+
     # Run gameplay
     print("\n" + "="*70)
-    print("Starting Gameplay...")
+    print("Starting Simulation...")
     print("="*70)
-    print("\nThe robot will now attempt to intercept the puck!")
-    print("Watch the simulation in Meshcat.\n")
+    
+    current_time = simulator.get_context().get_time()
+    desired_end_time = current_time + args.game_duration
+    print(f"[INFO] Running simulation from {current_time:.2f}s to {desired_end_time:.2f}s")
     
     try:
-        controller.run_game(
-            duration=args['game_duration'],
-            control_dt=args['control_dt']
-        )
+        simulator.AdvanceTo(desired_end_time)
     except KeyboardInterrupt:
-        print("\n\nGame interrupted by user")
-    
-    # Final state
-    print("\n" + "="*70)
-    print("Game Complete")
-    print("="*70)
-    
-    puck_state = controller.get_puck_state()
-    robot_state = controller.get_robot_state()
-    
-    print(f"\nFinal Puck State:")
-    print(f"  Position: {puck_state.position}")
-    print(f"  Velocity: {puck_state.velocity}")
-    print(f"  Speed: {puck_state.speed:.3f} m/s")
-    
-    print(f"\nFinal Robot State:")
-    print(f"  Joint positions: {robot_state.q}")
+        print("\n\nSimulation interrupted by user")
     
     print("\n" + "="*70)
-    print("Simulation complete!")
+    print("Simulation Complete")
     print("="*70)
     
-    if not args['no_meshcat']:
+    if meshcat:
         print("\nMeshcat visualization will remain open.")
-        print("Press Ctrl+C to exit, or close the browser window.")
+        print("Press Ctrl+C to exit.")
         try:
-            time.sleep(10)
+            # Keep alive for viewing
+            while True:
+                time.sleep(1.0)
         except KeyboardInterrupt:
             print("\nExiting...")
 
-
 if __name__ == "__main__":
     main()
-

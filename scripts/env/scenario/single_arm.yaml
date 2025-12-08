@@ -1,0 +1,55 @@
+
+directives:
+
+  ## GROUND ## 
+  - add_model:
+      name: ground
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/ground/ground.sdf
+  - add_weld:
+      parent: world
+      child: ground::ground_link
+      X_PC:
+        translation: [0.0, 0.0, -0.05]
+        rotation: !Rpy { deg: [0, 0, -90] }
+
+  ### TABLE ###
+  - add_model:
+      name: air_hockey_table
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/air_hockey_table/table.sdf
+  - add_weld:
+      parent: world
+      child: air_hockey_table::table_body
+      X_PC:
+        translation: [0.0, 0.0, 0.10]
+        rotation: !Rpy { deg: [0, 0, 0] }
+
+  ### PUCK ###
+  - add_model:
+      name: puck
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/puck/puck.sdf
+
+  ### RIGHT IIWA ###
+  - add_model:
+      name: right_iiwa
+      file: package://drake_models/iiwa_description/sdf/iiwa7_with_box_collision.sdf
+  - add_weld:
+      parent: world
+      child: right_iiwa::iiwa_link_0
+      X_PC:
+        translation: [1.3, 0.0, 0.0]
+        rotation: !Rpy { deg: [0, 0, 0] }
+
+  - add_model:
+      name: right_wsg
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/schunk_wsg_50/schunk_wsg_50_with_tip.sdf
+  - add_weld:
+      parent: right_iiwa::iiwa_link_7
+      child: right_wsg::body
+      X_PC:
+        translation: [0.0, 0.0, 0.09]
+        rotation: !Rpy { deg: [90, 0, 90] }
+
+  - add_model:
+      name: right_paddle
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
+  # Paddle is free-floating (no weld)

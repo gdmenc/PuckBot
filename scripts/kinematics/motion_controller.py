@@ -2,8 +2,10 @@ import numpy as np
 from numpy.typing import NDArray
 from typing import Optional, Union
 
-from scripts.drake_implementation import AirHockeyDrakeEnv
-from scripts.env.game_env import AirHockeyGameEnv
+from typing import Optional, Union, Any
+
+# from scripts.drake_implementation import AirHockeyDrakeEnv
+# from scripts.env.game_env import AirHockeyGameEnv
 
 from .states import PuckState, RobotState, JointTrajectory
 from .intercept_planner import InterceptPlanner, RobotConfig
@@ -17,7 +19,7 @@ class MotionController:
 
     def __init__(
         self,
-        env: Union[AirHockeyDrakeEnv, AirHockeyGameEnv],
+        env: Any,
         robot_id: int,
         home_q: NDArray[np.float64] | None = None
     ) -> None:
@@ -30,9 +32,18 @@ class MotionController:
         self.env = env
         self.robot_id = robot_id
 
+        # Determine models based on ID
         if robot_id == 1:
             self.robot_model = env.robot1_model
-            paddle_frame = "robot1/tool_body"
+            # Look for left gripper
+            try:
+                self.gripper_model = env.plant.GetModelInstanceByName("left_wsg")
+                paddle_frame = "body"
+            except:
+                 # Fallback if names differ or testing
+                self.gripper_model = self.robot_model
+                paddle_frame = "robot1/tool_body" # Fallback to old behavior
+                
             robot_config = RobotConfig(
                 robot_id=1,
                 x_min=-1.0,
@@ -42,7 +53,13 @@ class MotionController:
             )
         else:
             self.robot_model = env.robot2_model
-            paddle_frame = "robot2/tool_body"
+            try:
+                self.gripper_model = env.plant.GetModelInstanceByName("right_wsg")
+                paddle_frame = "body"
+            except:
+                self.gripper_model = self.robot_model
+                paddle_frame = "robot2/tool_body"
+                
             robot_config = RobotConfig(
                 robot_id=2,
                 x_min=0.2,
@@ -59,7 +76,8 @@ class MotionController:
             plant=env.plant,
             robot_model=self.robot_model,
             paddle_frame_name=paddle_frame,
-            robot_config=robot_config
+            robot_config=robot_config,
+            frame_model=self.gripper_model
         )
 
         self.current_trajectory: Optional[JointTrajectory] = None

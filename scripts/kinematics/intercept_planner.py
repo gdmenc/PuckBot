@@ -29,22 +29,29 @@ class InterceptPlanner:
         robot_model,
         paddle_frame_name: str,
         robot_config: RobotConfig,
-        puck_predictor: PuckPredictor | None = None
+        puck_predictor: PuckPredictor | None = None,
+        frame_model = None # Optional model to look up frame in
     ) -> None:
         """
         Args:
             plant: Drake MultibodyPlant
-            robot_model: Robot model instance
+            robot_model: Robot model instance (for IK/Joints)
             paddle_frame_name: Name of paddle/end-effector frame
             robot_config: Robot workspace and limits
             puck_predictor: Puck trajectory predictor
+            frame_model: Model instance containing the frame (defaults to robot_model)
         """
         self.plant = plant
         self.robot_model = robot_model
         self.config = robot_config
         self.predictor = puck_predictor or PuckPredictor()
 
-        self.paddle_frame = plant.GetFrameByName(paddle_frame_name, robot_model)
+        lookup_model = frame_model if frame_model is not None else robot_model
+        try:
+            self.paddle_frame = plant.GetFrameByName(paddle_frame_name, lookup_model)
+        except:
+            # Fallback for global lookup/scoped names if specific model lookup fails
+            self.paddle_frame = plant.GetFrameByName(paddle_frame_name)
         self.world_frame = plant.world_frame()
 
     def plan_intercept(
@@ -167,6 +174,10 @@ class InterceptPlanner:
             q_robot = self.plant.GetPositions(context_solution, self.robot_model)
             return True, q_robot
         else:
+            print(f"[IK FAILED] Target: {target_position}")
+            print(f"[IK FAILED] Seed Q: {seed_q}")
+            # print(f"[IK FAILED] Status: {result.get_solver_id().name()}")
+            # Check constraints? 
             return False, seed_q
 
     def _is_time_feasible(
