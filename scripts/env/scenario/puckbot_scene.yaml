@@ -1,5 +1,16 @@
 directives:
 
+  ## GROUND ## 
+  - add_model:
+      name: ground
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/ground/ground.sdf
+  - add_weld:
+      parent: world
+      child: ground::ground_link
+      X_PC:
+        translation: [0.0, 0.0, -0.05]
+        rotation: !Rpy { deg: [0, 0, -90] }
+
   ### TABLE ###
   - add_model:
       name: table
@@ -8,7 +19,7 @@ directives:
   ### LEFT IIWA ###
   - add_model:
       name: left_iiwa
-      file: package://drake_models/iiwa_description/sdf/iiwa7_no_collision.sdf
+      file: package://drake_models/iiwa_description/sdf/iiwa7_with_box_collision.sdf
   - add_weld:
       parent: world
       child: left_iiwa::iiwa_link_0
@@ -29,7 +40,7 @@ directives:
   ### RIGHT IIWA ###
   - add_model:
       name: right_iiwa
-      file: package://drake_models/iiwa_description/sdf/iiwa7_no_collision.sdf
+      file: package://drake_models/iiwa_description/sdf/iiwa7_with_box_collision.sdf
   - add_weld:
       parent: world
       child: right_iiwa::iiwa_link_0
@@ -47,13 +58,25 @@ directives:
         translation: [0.0, 0.0, 0.09]
         rotation: !Rpy { deg: [90, 0, 90] }
 
+  ### PUCK ###
+  - add_model:
+      name: puck
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/puck/puck.sdf
+  - add_weld:
+      parent: world
+      child: puck::puck_body_link
+      X_PC:
+        translation: [0.0, 0.0, 0.04]
+        rotation: !Rpy { deg: [0, 0, 0] }
+
   ### FREE PADDLES ###
   - add_model:
       name: left_paddle
       file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
-      default_free_body_pose:
-        paddle_body_link:
-          translation: [0.0, 0.0, 0.1]
-          rotation: !Rpy { deg: [0, 0, 0] }
-
+  - add_weld:
+      parent: world
+      child: left_paddle::paddle_body_link
+      X_PC:
+        translation: [0.0, 0.0, 0.04]
+        rotation: !Rpy { deg: [0, 0, 0] }
 

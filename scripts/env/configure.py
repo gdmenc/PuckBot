@@ -22,14 +22,19 @@ from pydrake.visualization import AddDefaultVisualization, ModelVisualizer
 from pydrake.systems.framework import LeafSystem
 import numpy as np
 
-from pydrake.systems.framework import LeafSystem
-import numpy as np
+import pydrake.geometry as mut
 
-# Start a new Meshcat instance.
+
+# class AirHockeyChallengeEnv:
+#     def __init__(self):
+#         # Start a new Meshcat instance.
+#         self.meshcat = StartMeshcat()
+
+#         builder = DiagramBuilder()
+
 meshcat = StartMeshcat()
-
-
 builder = DiagramBuilder()
+
 plant, scene_graph = AddMultibodyPlantSceneGraph(
     builder,
     time_step=0.001,

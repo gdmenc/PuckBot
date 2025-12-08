@@ -1,0 +1,26 @@
+<sdf xmlns:drake="drake.mit.edu" version="1.5">
+  <model name="puck">
+    <link name="puck_body_link">
+      <pose>0 0 0 0 0 0</pose>
+      <inertial>
+        <mass>1.8400E-02</mass>
+        <inertia>
+          <ixx>4.5049E-06</ixx>
+          <ixy>-0.0000E+00</ixy>
+          <ixz>1.7233E-24</ixz>
+          <iyy>4.5049E-06</iyy>
+          <iyz>3.2042E-24</iyz>
+          <izz>8.9822E-06</izz>
+        </inertia>
+      </inertial>
+      <visual name="visual">
+        <geometry>
+          <mesh>
+            <uri>puck_lowpoly.obj</uri>
+            <scale>1.0000E+00 1.0000E+00 1.0000E+00</scale>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+  </model>
+</sdf>
