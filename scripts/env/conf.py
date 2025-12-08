@@ -17,27 +17,19 @@ from pydrake.all import (
 )
 
 class AirHockeyChallengeEnv:
-    """
-    Drake-based air hockey environment built from a Drake 'scenario' YAML.
-    - Automatically generates simple SDFs for table + puck and a scenario YAML.
-    - Loads IIWA + WSG from package URIs, adds table and puck.
-    - meshcat: bool to start Meshcat.
-    """
-
     def __init__(self,
                  scenario_name: str = "air_hockey",
                  generated_dir: str = "generated_scene",
                  rim_stl_path: str = "mjx/assets/table_rim.stl",
-                 use_iiwa: bool = True,
                  use_wsg: bool = True,
                  meshcat: bool = True,
                  time_step: float = 0.0):
+    
         self.generated_dir = Path(generated_dir)
         self.generated_dir.mkdir(parents=True, exist_ok=True)
 
         self.rim_stl_path = rim_stl_path
         self.scenario_name = scenario_name
-        self.use_iiwa = use_iiwa
         self.use_wsg = use_wsg
         self.meshcat_flag = meshcat
         self.time_step = time_step
