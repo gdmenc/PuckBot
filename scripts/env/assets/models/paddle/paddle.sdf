@@ -1,36 +1,44 @@
-<sdf version="1.6">
+<sdf version="1.7">
   <model name="paddle">
     <link name="paddle_body_link">
+      <pose>0 0 0.02 0 0 0</pose>
 
       <inertial>
-        <mass>1</mass>
+        <mass>0.05</mass>
         <inertia>
-          <ixx>0.001</ixx>
-          <iyy>0.001</iyy>
-          <izz>0.001</izz>
+          <ixx>0.0002</ixx>
+          <iyy>0.0002</iyy>
+          <izz>0.0002</izz>
         </inertia>
       </inertial>
 
       <collision name="paddle_collision">
         <geometry>
-          <mesh>
-            <uri>paddle.obj</uri>
-            <scale>0.001 0.001 0.001</scale>
-          </mesh>
+          <box>
+            <size>0.04 0.01 0.08</size>
+          </box>
         </geometry>
+
+        <!-- FRICTION MUST BE *inside* collision -->
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.0</mu>
+              <mu2>0.0</mu2>
+              <slip1>1e6</slip1>
+              <slip2>1e6</slip2>
+            </ode>
+          </friction>
+        </surface>
       </collision>
 
-      <visual name="paddle_visual">
+      <visual name="visual">
         <geometry>
           <mesh>
             <uri>paddle.obj</uri>
             <scale>0.001 0.001 0.001</scale>
           </mesh>
         </geometry>
-        <material>
-          <ambient>0.3 0.3 0.3 1</ambient>
-          <diffuse>0.7 0.2 0.2 1</diffuse>
-        </material>
       </visual>
 
     </link>

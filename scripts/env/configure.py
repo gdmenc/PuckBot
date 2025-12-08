@@ -12,11 +12,18 @@ from pydrake.all import (
     StartMeshcat,
     JacobianWrtVariable,
 )
+from pydrake.all import AddFrameTriadIllustration
+from pydrake.multibody.tree import BodyIndex
 from pydrake.visualization import AddDefaultVisualization, ModelVisualizer
 
 # # Clean up the Meshcat instance.
 # meshcat.Delete()
 # meshcat.DeleteAddedControls()
+from pydrake.systems.framework import LeafSystem
+import numpy as np
+
+from pydrake.systems.framework import LeafSystem
+import numpy as np
 
 # Start a new Meshcat instance.
 meshcat = StartMeshcat()
@@ -28,8 +35,15 @@ plant, scene_graph = AddMultibodyPlantSceneGraph(
     time_step=0.001,
 )
 parser = Parser(builder)
-directives = LoadModelDirectives("puckbot_scene.yaml")
+directives = LoadModelDirectives("scenario/puckbot_scene.yaml")
 ProcessModelDirectives(directives, parser)
+AddFrameTriadIllustration(
+    body=plant.GetBodyByName("table"),
+    scene_graph=scene_graph,
+    # length=0.15,
+    # radius=0.006,
+)
+
 # parser.AddModels("assets/models/table_wide.sdf")
 # parser.AddModels("assets/models/paddle.sdf")
 # left_parser = Parser(plant, "left")
@@ -57,9 +71,8 @@ ProcessModelDirectives(directives, parser)
 #     plant.GetFrameByName("paddle_body_link"),
 #     RigidTransform([0, 0, 0.15])              # just above table
 # )
-
+# add_axes_for_all_bodies(plant, scene_graph)
 plant.Finalize()
-
 
 
 # plant_context = plant.CreateDefaultContext()

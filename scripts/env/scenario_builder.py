@@ -11,11 +11,14 @@ assets_dir = os.path.join(repo_dir, "scripts", "env", "assets", "models")
 
 table_uri = file_uri(os.path.join(assets_dir, "air_hockey_table", "table.xml"))
 paddle_uri = file_uri(os.path.join(assets_dir, "paddle", "paddle.sdf"))
+wsg_uri = file_uri(os.path.join(assets_dir, "schunk_wsg_50", "schunk_wsg_50_with_tip.sdf"))
 
 print("TABLE URI:", table_uri)
 print("Exists:", os.path.exists(os.path.join(assets_dir, "air_hockey_table", "table.xml")))
 print("PADDLE URI:", paddle_uri)
 print("Exists:", os.path.exists(os.path.join(assets_dir, "paddle", "paddle.sdf")))
+print("WSG URI:", wsg_uri)
+print("Exists:", os.path.exists(os.path.join(assets_dir, "schunk_wsg_50", "schunk_wsg_50_with_tip.sdf")))
 
 yaml = """
 directives:
@@ -33,12 +36,12 @@ directives:
       parent: world
       child: left_iiwa::iiwa_link_0
       X_PC:
-        translation: [0.0, 0.85, 0.0]
+        translation: [-1.3, 0.0, 0.0]
         rotation: !Rpy { deg: [0, 0, 180] }
 
   - add_model:
       name: left_wsg
-      file: package://manipulation/hydro/schunk_wsg_50_with_tip.sdf
+      file: FILE_WSG
   - add_weld:
       parent: left_iiwa::iiwa_link_7
       child: left_wsg::body
@@ -54,12 +57,12 @@ directives:
       parent: world
       child: right_iiwa::iiwa_link_0
       X_PC:
-        translation: [0.0, -0.85, 0.0]
+        translation: [1.3, 0.0, 0.0]
         rotation: !Rpy { deg: [0, 0, 0] }
 
   - add_model:
       name: right_wsg
-      file: package://manipulation/hydro/schunk_wsg_50_with_tip.sdf
+      file: FILE_WSG
   - add_weld:
       parent: right_iiwa::iiwa_link_7
       child: right_wsg::body
@@ -73,22 +76,24 @@ directives:
       file: FILE_PADDLE
       default_free_body_pose:
         paddle_body_link:
-          translation: [0.0, 0.45, 0.10]
-          rotation: !Rpy { deg: [0, 0, 180] }
-
-  - add_model:
-      name: right_paddle
-      file: FILE_PADDLE
-      default_free_body_pose:
-        paddle_body_link:
-          translation: [0.0, -0.45, 0.10]
+          translation: [0.0, 0.0, 0.1]
           rotation: !Rpy { deg: [0, 0, 0] }
+
+
 """
+  # - add_model:
+  #     name: right_paddle
+  #     file: FILE_PADDLE
+  #     default_free_body_pose:
+  #       paddle_body_link:
+  #         translation: [0.0, 0.0, 0.0]
+  #         rotation: !Rpy { deg: [0, 0, 0] }
 
 yaml = yaml.replace("FILE_TABLE", table_uri)
 yaml = yaml.replace("FILE_PADDLE", paddle_uri)
+yaml = yaml.replace("FILE_WSG", wsg_uri)
 
-out_path = os.path.join(repo_dir, "scripts", "env", "puckbot_scene.yaml")
+out_path = os.path.join(repo_dir, "scripts", "env", "scenario/puckbot_scene.yaml")
 os.makedirs(os.path.dirname(out_path), exist_ok=True)
 with open(out_path, "w") as f:
     f.write(dedent(yaml).lstrip())
