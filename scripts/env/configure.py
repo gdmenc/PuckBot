@@ -25,12 +25,11 @@ import numpy as np
 import pydrake.geometry as mut
 
 
-# class AirHockeyChallengeEnv:
-#     def __init__(self):
-#         # Start a new Meshcat instance.
-#         self.meshcat = StartMeshcat()
-
-#         builder = DiagramBuilder()
+class AirHockeyChallengeEnv:
+    def __init__(self, *args, **kwargs):
+        # Start a new Meshcat instance.
+        self.meshcat = StartMeshcat()
+        builder = DiagramBuilder()
 
 meshcat = StartMeshcat()
 builder = DiagramBuilder()
