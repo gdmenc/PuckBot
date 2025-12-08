@@ -47,33 +47,43 @@ def initialize_puck(simulator: Simulator, plant, puck_model, velocity=None):
             SpatialVelocity(v)
         )
 
-def initialize_paddles(plant, plant_context):
+def initialize_paddles(plant, plant_context, skip_if_welded=False):
     """
-    Sets initial pose for paddles (free bodies).
+    Sets initial pose for paddles (free bodies only).
+    If skip_if_welded=True, skip initialization for welded paddles.
     """
-    # Spawn paddles at user-specified positions (+/- 0.2, Z=0.15)
-    
     # Right Paddle
     try:
         paddle_model = plant.GetModelInstanceByName("right_paddle")
         paddle_body = plant.GetBodyByName("paddle_body_link", paddle_model)
-        plant.SetFreeBodyPose(
-            plant_context, 
-            paddle_body, 
-            RigidTransform([0.0, 0.0, 0.0]) 
-        )
-    except Exception as e:
-        print(f"[ERROR] Failed to initialize right paddle: {e}")
+        
+        # Check if body is free before setting pose
+        if paddle_body.is_floating_base_body():
+            plant.SetFreeBodyPose(
+                plant_context, 
+                paddle_body, 
+                RigidTransform([0.4, 0.0, 0.15])  # Right side of table
+            )
+        elif not skip_if_welded:
+            print(f"[WARNING] Could not initialize right paddle: Body 'paddle_body_link' is not a free body.")
+    except RuntimeError as e:
+        if not skip_if_welded:
+            print(f"[ERROR] Failed to initialize right paddle: {e}")
         
     # Left Paddle (only exists in 2-arm mode)
     try:
         paddle_model = plant.GetModelInstanceByName("left_paddle")
         paddle_body = plant.GetBodyByName("paddle_body_link", paddle_model)
-        plant.SetFreeBodyPose(
-            plant_context, 
-            paddle_body, 
-            RigidTransform([-0.6, 0.0, 0.20]) 
-        )
+        
+        # Check if body is free before setting pose
+        if paddle_body.is_floating_base_body():
+            plant.SetFreeBodyPose(
+                plant_context, 
+                paddle_body, 
+                RigidTransform([-0.4, 0.0, 0.15])  # Left side of table
+            )
+        elif not skip_if_welded:
+            print(f"[WARNING] Could not initialize left paddle: Body 'paddle_body_link' is not a free body.")
     except RuntimeError:
         # Expected in single-arm mode
         pass
@@ -84,41 +94,52 @@ def initialize_robots(plant, plant_context, num_arms=2):
     Avoids singularities encountered at [0,0,...].
     """
     # Standard home config (bent arm)
-    # q = [-1.57, 0.5, 0.0, -1.2, 0.0, 1.6, 0.0]
-    home_q = np.array([-1.57, 0.5, 0.0, -1.2, 0.0, 1.6, 0.0])
+def initialize_robots(plant, plant_context, num_arms):
+    """
+    Initialize robot joint positions so grippers are positioned around paddle stems.
+    """
+    # Right robot - position gripper around paddle at [0.4, 0, 0.15]
+    # Joint config to reach paddle on right side of table
+    q_right = np.array([
+        0.0,     # J1: base rotation
+        0.3,     # J2: shoulder
+        0.0,     # J3: elbow rotation
+        -1.0,    # J4: elbow bend
+        0.0,     # J5: wrist rotation
+        1.2,     # J6: wrist bend
+        0.0      # J7: wrist rotation
+    ])
     
-    # Right Arm
     try:
-        model = plant.GetModelInstanceByName("right_iiwa")
-        plant.SetPositions(plant_context, model, home_q)
+        right_iiwa = plant.GetModelInstanceByName("right_iiwa")
+        plant.SetPositions(plant_context, right_iiwa, q_right)
     except Exception as e:
-        print(f"[WARNING] Could not set home for right_iiwa: {e}")
-
+        print(f"[WARNING] Could not set right robot position: {e}")
+    
     if num_arms == 2:
-        # Left Arm (Mirrored? Or same? -1.57 is -90 deg. Left might need +1.57?)
-        # Let's use mirror for joint 0 (base rotation).
-        # -1.57 puts Right Arm (X-forward) to -Y side? 
-        # Check frame: IIWA base Z-up. Joint 1 rotates around Z.
-        # If Right Arm is at Y=0. 
-        # Actually, let's just use the same bent shape. 
-        # If we want symmetry, J1 might need sign flip. 
-        # But for now, let's just use the same "bent up and forward" pose.
-        # Wait, [-1.57 ...] rotates it 90 deg.
-        # Let's use the provided home_q for both and see.
+        # Left robot - position gripper around paddle at [-0.4, 0, 0.15]
+        # Mirror configuration for left side
+        q_left = np.array([
+            np.pi,   # J1: base rotation (facing opposite direction)
+            0.3,     # J2: shoulder
+            0.0,     # J3: elbow rotation
+            -1.0,    # J4: elbow bend
+            0.0,     # J5: wrist rotation
+            1.2,     # J6: wrist bend
+            0.0      # J7: wrist rotation
+        ])
+        
         try:
-            model = plant.GetModelInstanceByName("left_iiwa")
-            # Mirror J1? 
-            home_q_left = home_q.copy()
-            home_q_left[0] = 1.57 # Rotate 90 deg the other way (if facing each other?)
-            plant.SetPositions(plant_context, model, home_q_left)
+            left_iiwa = plant.GetModelInstanceByName("left_iiwa")
+            plant.SetPositions(plant_context, left_iiwa, q_left)
         except Exception as e:
-            print(f"[WARNING] Could not set home for left_iiwa: {e}")
+            print(f"[WARNING] Could not set left robot position: {e}")
 
 def create_air_hockey_simulation(
     num_arms: int = 2,
     time_step: float = 0.001,
     use_meshcat: bool = True,
-    skip_grasp: bool = False
+    skip_grasp: bool = False  # Default to free paddles on table
 ):
     """
     Creates the Air Hockey simulation environment.
@@ -203,56 +224,18 @@ def create_air_hockey_simulation(
     context = simulator.get_mutable_context()
     plant_context = plant.GetMyContextFromRoot(context)
     
-    # Puck position
+    # Initialize puck (free body at center of table)
     try:
         puck_model = plant.GetModelInstanceByName("puck")
-        puck_body = plant.GetBodyByName("puck_body_link", puck_model)
-        plant.SetFreeBodyPose(
-            plant_context, 
-            puck_body, 
-            RigidTransform([0.0, 0.0, 0.15])  # Center of table, above surface
-        )
+        initialize_puck(simulator, plant, puck_model, velocity=[0, 0, 0])
     except Exception as e:
         print(f"[WARNING] Could not initialize puck: {e}")
     
-    # Right paddle position (close to right robot)
-    try:
-        paddle_model = plant.GetModelInstanceByName("right_paddle")
-        paddle_body = plant.GetBodyByName("paddle_body_link", paddle_model)
-        plant.SetFreeBodyPose(
-            plant_context, 
-            paddle_body, 
-            RigidTransform([0.6, 0.0, 0.15])  # Near right robot
-        )
-    except Exception as e:
-        print(f"[WARNING] Could not initialize right paddle: {e}")
+    # Initialize paddles (skip warning if welded in skip-grasp mode)
+    initialize_paddles(plant, plant_context, skip_if_welded=skip_grasp)
     
-    # Left paddle position (close to left robot, only in 2-arm mode)
-    try:
-        paddle_model = plant.GetModelInstanceByName("left_paddle")
-        paddle_body = plant.GetBodyByName("paddle_body_link", paddle_model)
-        plant.SetFreeBodyPose(
-            plant_context, 
-            paddle_body, 
-            RigidTransform([-0.6, 0.0, 0.15])  # Near left robot
-        )
-    except RuntimeError:
-        pass  # Expected in single-arm mode
-    
-    # Robot home positions
-    home_q = np.array([-1.57, 0.5, 0.0, -1.2, 0.0, 1.6, 0.0])
-    try:
-        right_iiwa = plant.GetModelInstanceByName("right_iiwa")
-        plant.SetPositions(plant_context, right_iiwa, home_q)
-    except:
-        pass
-    try:
-        left_iiwa = plant.GetModelInstanceByName("left_iiwa")
-        home_q_left = home_q.copy()
-        home_q_left[0] = 1.57  # Mirror for left arm
-        plant.SetPositions(plant_context, left_iiwa, home_q_left)
-    except:
-        pass
+    # Initialize robots to home positions
+    initialize_robots(plant, plant_context, num_arms)
     
     simulator.Initialize()
     
