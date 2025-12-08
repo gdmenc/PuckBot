@@ -33,9 +33,10 @@
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus>5.0e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>0.0</drake:hunt_crossley_dissipation>
           <drake:mesh_resolution_hint>0.05</drake:mesh_resolution_hint>
-          <drake:mu_dynamic>0.08</drake:mu_dynamic>
-          <drake:mu_static>0.08</drake:mu_static>
+          <drake:mu_dynamic>0.01</drake:mu_dynamic>
+          <drake:mu_static>0.01</drake:mu_static>
         </drake:proximity_properties>
       </collision>
 

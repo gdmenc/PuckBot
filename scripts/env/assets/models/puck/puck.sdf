@@ -1,7 +1,7 @@
 <sdf xmlns:drake="drake.mit.edu" version="1.5">
   <model name="puck">
     <link name="puck_body_link">
-      <pose>0 0 0.3 0 0 0</pose>
+      <pose>0 0 0 0 0 0</pose>
       <inertial>
         <mass>1.8400E-02</mass>
         <inertia>
@@ -15,20 +15,31 @@
       </inertial>
       <visual name="visual">
         <geometry>
-          <mesh>
-            <uri>puck_lowpoly.obj</uri>
-            <scale>1.0000E+00 1.0000E+00 1.0000E+00</scale>
-          </mesh>
-        </geometry>
-      </visual>
-      <collision name="collision">
-        <geometry>
-          <!-- Approximate puck as cylinder: radius ~0.03m, height ~0.01m -->
           <cylinder>
             <radius>0.03</radius>
             <length>0.01</length>
           </cylinder>
         </geometry>
+        <material>
+          <diffuse>0.8 0.1 0.1 1.0</diffuse>
+        </material>
+      </visual>
+      <!-- Collision: Simple cylinder for bounces, ZERO damping -->
+      <collision name="puck_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.03</radius>
+            <length>0.01</length>
+          </cylinder>
+        </geometry>
+        <drake:proximity_properties>
+          <drake:compliant_hydroelastic/>
+          <drake:hydroelastic_modulus>1.0e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>0.0</drake:hunt_crossley_dissipation>
+          <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
+          <drake:mu_dynamic>0.01</drake:mu_dynamic>
+          <drake:mu_static>0.01</drake:mu_static>
+        </drake:proximity_properties>
       </collision>
     </link>
   </model>
