@@ -1,3 +1,4 @@
+
 directives:
 
   ## GROUND ## 
@@ -19,29 +20,13 @@ directives:
       parent: world
       child: air_hockey_table::table_body
       X_PC:
-        translation: [0.0, 0.0, 0.11]
+        translation: [0.0, 0.0, 0.10]
         rotation: !Rpy { deg: [0, 0, 0] }
 
-  ### LEFT IIWA ###
+  ### PUCK ###
   - add_model:
-      name: left_iiwa
-      file: package://drake_models/iiwa_description/sdf/iiwa7_with_box_collision.sdf
-  - add_weld:
-      parent: world
-      child: left_iiwa::iiwa_link_0
-      X_PC:
-        translation: [-1.3, 0.0, 0.0]
-        rotation: !Rpy { deg: [0, 0, 180] }
-
-  - add_model:
-      name: left_wsg
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/schunk_wsg_50/schunk_wsg_50_with_tip.sdf
-  - add_weld:
-      parent: left_iiwa::iiwa_link_7
-      child: left_wsg::body
-      X_PC:
-        translation: [0.0, 0.0, 0.09]
-        rotation: !Rpy { deg: [90, 0, 90] }
+      name: puck
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/puck/puck.sdf
 
   ### RIGHT IIWA ###
   - add_model:
@@ -64,35 +49,43 @@ directives:
         translation: [0.0, 0.0, 0.09]
         rotation: !Rpy { deg: [90, 0, 90] }
 
-  ### PUCK ###
+  ### LEFT IIWA ###
   - add_model:
-      name: puck
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/puck/puck.sdf
+      name: left_iiwa
+      file: package://drake_models/iiwa_description/sdf/iiwa7_with_box_collision.sdf
   - add_weld:
       parent: world
-      child: puck::puck_body_link
+      child: left_iiwa::iiwa_link_0
       X_PC:
-        translation: [0.0, 0.0, 0.11]
-        rotation: !Rpy { deg: [0, 0, 0] }
+        translation: [-1.3, 0.0, 0.0]
+        rotation: !Rpy { deg: [0, 0, 180] }
 
-  ### FREE PADDLES ###
   - add_model:
-      name: left_paddle
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
+      name: left_wsg
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/schunk_wsg_50/schunk_wsg_50_with_tip.sdf
   - add_weld:
-      parent: world
-      child: left_paddle::paddle_body_link
+      parent: left_iiwa::iiwa_link_7
+      child: left_wsg::body
       X_PC:
-        translation: [-0.4, 0.0, 0.11]
-        rotation: !Rpy { deg: [0, 0, 0] }
+        translation: [0.0, 0.0, 0.09]
+        rotation: !Rpy { deg: [90, 0, 90] }
 
   - add_model:
       name: right_paddle
       file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
   - add_weld:
-      parent: world
+      parent: right_wsg::body
       child: right_paddle::paddle_body_link
       X_PC:
-        translation: [0.4, 0.0, 0.11]
-        rotation: !Rpy { deg: [0, 0, 0] }
+        translation: [0.0, -0.1, 0.12]
+        rotation: !Rpy { deg: [90, 0, 0] }
 
+  - add_model:
+      name: left_paddle
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
+  - add_weld:
+      parent: left_wsg::body
+      child: left_paddle::paddle_body_link
+      X_PC:
+        translation: [0.0, -0.1, 0.12]
+        rotation: !Rpy { deg: [90, 0, 0] }
