@@ -90,48 +90,52 @@ def initialize_paddles(plant, plant_context, skip_if_welded=False):
 
 def initialize_robots(plant, plant_context, num_arms=2):
     """
-    Sets initial joint positions for robots to a safe 'home' configuration.
-    Avoids singularities encountered at [0,0,...].
+    Initialize robot joint positions so grippers hold paddles resting on table.
     """
-    # Standard home config (bent arm)
-def initialize_robots(plant, plant_context, num_arms):
-    """
-    Initialize robot joint positions so grippers are positioned around paddle stems.
-    """
-    # Right robot - position gripper around paddle at [0.4, 0, 0.15]
-    # Joint config to reach paddle on right side of table
+    # Right robot - position so paddle base rests flat on table
+    # With paddle welded at [0, 0.08, -0.05] and paddle head at z=0 in paddle frame,
+    # we need gripper at appropriate height
     q_right = np.array([
         0.0,     # J1: base rotation
-        0.3,     # J2: shoulder
+        -np.pi/4,     # J2: shoulder - angled to reach table
         0.0,     # J3: elbow rotation
-        -1.0,    # J4: elbow bend
+        -np.pi/4,    # J4: elbow bend
         0.0,     # J5: wrist rotation
-        1.2,     # J6: wrist bend
+        0.0,     # J6: wrist bend to align paddle with table
         0.0      # J7: wrist rotation
     ])
     
     try:
         right_iiwa = plant.GetModelInstanceByName("right_iiwa")
         plant.SetPositions(plant_context, right_iiwa, q_right)
+        
+        # Close gripper fingers to grip paddle stem (radius 0.02m)
+        # WSG fingers are at indices 7, 8 in the full state vector
+        right_wsg = plant.GetModelInstanceByName("right_wsg")
+        # Gripper position: 0.02 (closed around 0.04m diameter stem)
+        plant.SetPositions(plant_context, right_wsg, np.array([0.02, -0.02]))
     except Exception as e:
         print(f"[WARNING] Could not set right robot position: {e}")
     
     if num_arms == 2:
-        # Left robot - position gripper around paddle at [-0.4, 0, 0.15]
-        # Mirror configuration for left side
+        # Left robot - mirror configuration
         q_left = np.array([
-            np.pi,   # J1: base rotation (facing opposite direction)
-            0.3,     # J2: shoulder
+            -np.pi,   # J1: base rotation (facing opposite)
+            np.pi/2,     # J2: shoulder
             0.0,     # J3: elbow rotation
-            -1.0,    # J4: elbow bend
+            0.0,    # J4: elbow bend
             0.0,     # J5: wrist rotation
-            1.2,     # J6: wrist bend
+            0.0,     # J6: wrist bend
             0.0      # J7: wrist rotation
         ])
         
         try:
             left_iiwa = plant.GetModelInstanceByName("left_iiwa")
             plant.SetPositions(plant_context, left_iiwa, q_left)
+            
+            # Close left gripper
+            left_wsg = plant.GetModelInstanceByName("left_wsg")
+            plant.SetPositions(plant_context, left_wsg, np.array([0.02, -0.02]))
         except Exception as e:
             print(f"[WARNING] Could not set left robot position: {e}")
 
