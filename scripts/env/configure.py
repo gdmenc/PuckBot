@@ -16,36 +16,42 @@ import numpy as np
 
 from scripts.env.scenario_builder import generate_scenario_yaml
 
-def initialize_puck(simulator: Simulator, plant, puck_model, velocity=None):
+def initialize_puck(simulator, plant, puck_model, velocity=[0.5, 0.3, 0]):
     """
-    Sets the initial state of the puck (free body).
+    Initializes the puck at the center of the table with a starting velocity.
+    As per paper: puck motion is 2D (xy-plane), z velocity constrained to 0.
+    
+    Args:
+        velocity: [vx, vy, vz] - initial velocity (vz should be 0)
     """
     context = simulator.get_mutable_context()
-    plant_context = plant.GetMyContextFromRoot(context)
+    plant_context = plant.GetMyMutableContextFromRoot(context)
     
-    # Get the puck body
-    puck_body = plant.GetBodyByName("puck_body_link", puck_model)
-    
-    # Set initial position (center of table, above surface)
-    # Using 0.15 to be safe (table surface at ~0.10)
-    
-    initial_pose = RigidTransform(
-        RotationMatrix(),
-        [0.0, 0.0, 0.3] 
-    )
-    
-    plant.SetFreeBodyPose(plant_context, puck_body, initial_pose)
-    
-    if velocity is not None:
-        # velocity is [vx, vy, vz]
-        # Set spatial velocity
-        v = np.zeros(6)
-        v[3:6] = velocity # translational part
+    try:
+        puck_body = plant.GetBodyByName("puck_body_link", puck_model)
+        
+        # Set position at center of table, slightly above surface
+        plant.SetFreeBodyPose(
+            plant_context,
+            puck_body,
+            RigidTransform([0.0, 0.0, 0.15])  # Center, at table height
+        )
+        
+        # Set initial velocity (2D motion, no z component)
+        velocity = np.array(velocity, dtype=float)
+        velocity[2] = 0.0  # Force z velocity to zero
+        
+        # Split velocity into linear (xyz) and angular (000)
+        v = np.concatenate([np.zeros(3), velocity])  # [wx, wy, wz, vx, vy, vz]
+        
         plant.SetFreeBodySpatialVelocity(
-            plant_context, 
-            puck_body, 
+            plant_context,
+            puck_body,
             SpatialVelocity(v)
         )
+        
+    except Exception as e:
+        print(f"[WARNING] Could not initialize puck: {e}")
 
 def initialize_paddles(plant, plant_context, skip_if_welded=False):
     """
@@ -170,6 +176,9 @@ def create_air_hockey_simulation(
         builder,
     )
     
+    # Disable gravity for 2D air hockey physics
+    plant.mutable_gravity_field().set_gravity_vector([0, 0, 0])
+    
     parser = Parser(plant)
     
     # Build scenario from YAML
@@ -188,24 +197,11 @@ def create_air_hockey_simulation(
     
     plant.Finalize()
     
-    # --- Game Systems (DISABLED for debugging visualization) ---
-    from scripts.env.game_systems import PuckDragSystem, GameScoreSystem
-    #
+    # Game scoring system
+    from scripts.env.game_systems import GameScoreSystem
+    
     try:
         puck_model = plant.GetModelInstanceByName("puck")
-        
-        # 1. Drag System
-        drag_system = builder.AddSystem(PuckDragSystem(plant, puck_model))
-        builder.Connect(
-            plant.get_body_spatial_velocities_output_port(),
-            drag_system.get_input_port(1)
-        )
-        builder.Connect(
-            drag_system.get_output_port(0),
-            plant.get_applied_spatial_force_input_port()
-        )
-        
-        # 2. Scoring System (prints to terminal)
         score_system = builder.AddSystem(GameScoreSystem(plant, puck_model))
         builder.Connect(
             plant.get_body_poses_output_port(),
@@ -217,6 +213,9 @@ def create_air_hockey_simulation(
 
     if use_meshcat:
         AddDefaultVisualization(builder, meshcat)
+        print("[INFO] Waiting for Meshcat to initialize...")
+        import time
+        time.sleep(2.0)  # Give Meshcat time to load
     
     diagram = builder.Build()
     simulator = Simulator(diagram)
@@ -231,9 +230,16 @@ def create_air_hockey_simulation(
     # Initialize puck (free body at center of table)
     try:
         puck_model = plant.GetModelInstanceByName("puck")
-        initialize_puck(simulator, plant, puck_model, velocity=[0, 0, 0])
+        puck_body = plant.GetBodyByName("puck_body_link", puck_model)
+        
+        # Set POSITION before Initialize (at table surface)
+        plant.SetFreeBodyPose(
+            plant_context,
+            puck_body,
+            RigidTransform([0.0, 0.0, 0.11])  # Table surface height
+        )
     except Exception as e:
-        print(f"[WARNING] Could not initialize puck: {e}")
+        print(f"[WARNING] Could not initialize puck position: {e}")
     
     # Initialize paddles (skip warning if welded in skip-grasp mode)
     initialize_paddles(plant, plant_context, skip_if_welded=skip_grasp)
@@ -242,5 +248,25 @@ def create_air_hockey_simulation(
     initialize_robots(plant, plant_context, num_arms)
     
     simulator.Initialize()
+    
+    # Set puck VELOCITY after Initialize (so it doesn't get reset)
+    try:
+        puck_model = plant.GetModelInstanceByName("puck")
+        puck_body = plant.GetBodyByName("puck_body_link", puck_model)
+        context = simulator.get_mutable_context()
+        plant_context = plant.GetMyMutableContextFromRoot(context)
+        
+        # Set initial velocity [vx, vy, 0] - realistic air hockey speed
+        velocity = np.array([0.5, 0.3, 0.0])
+        v = np.concatenate([np.zeros(3), velocity])  # [wx, wy, wz, vx, vy, vz]
+        
+        plant.SetFreeBodySpatialVelocity(
+            plant_context,
+            puck_body,
+            SpatialVelocity(v)
+        )
+        print(f"[INFO] Puck initialized with velocity: {velocity}")
+    except Exception as e:
+        print(f"[WARNING] Could not set puck velocity: {e}")
     
     return simulator, meshcat, plant, diagram
