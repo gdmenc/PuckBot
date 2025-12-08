@@ -3,7 +3,7 @@ directives:
   ### TABLE ###
   - add_model:
       name: table
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/table.xml
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/air_hockey_table/table.xml
 
   ### LEFT IIWA ###
   - add_model:
@@ -50,7 +50,7 @@ directives:
   ### FREE PADDLES ###
   - add_model:
       name: left_paddle
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle.sdf
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
       default_free_body_pose:
         paddle_body_link:
           translation: [0.0, 0.45, 0.10]
@@ -58,7 +58,7 @@ directives:
 
   - add_model:
       name: right_paddle
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle.sdf
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
       default_free_body_pose:
         paddle_body_link:
           translation: [0.0, -0.45, 0.10]

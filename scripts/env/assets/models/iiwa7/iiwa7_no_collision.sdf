@@ -18,7 +18,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_0.gltf</uri>
+            <uri>link_0.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -42,7 +42,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_1.gltf</uri>
+            <uri>link_1.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -88,7 +88,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_2.gltf</uri>
+            <uri>link_2.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -134,7 +134,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_3.gltf</uri>
+            <uri>link_3.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -180,7 +180,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_4.gltf</uri>
+            <uri>link_4.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -226,7 +226,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_5.gltf</uri>
+            <uri>link_5.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -273,7 +273,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_6.gltf</uri>
+            <uri>link_6.gltf</uri>
           </mesh>
         </geometry>
       </visual>
@@ -319,7 +319,7 @@
         <geometry>
           <mesh>
             <scale>1 1 1</scale>
-            <uri>package://drake_models/iiwa_description/meshes/iiwa7/visual/link_7.gltf</uri>
+            <uri>link_7.gltf</uri>
           </mesh>
         </geometry>
       </visual>

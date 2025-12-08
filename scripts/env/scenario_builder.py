@@ -5,11 +5,17 @@ def file_uri(path: str) -> str:
     abs_path = path if os.path.isabs(path) else os.path.abspath(path)
     return f"file://{abs_path}"
 
+# Paths
 repo_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 assets_dir = os.path.join(repo_dir, "scripts", "env", "assets", "models")
 
-paddle_uri = file_uri(os.path.join(assets_dir, "paddle.sdf"))
-table_uri = file_uri(os.path.join(assets_dir, "table.xml"))
+table_uri = file_uri(os.path.join(assets_dir, "air_hockey_table", "table.xml"))
+paddle_uri = file_uri(os.path.join(assets_dir, "paddle", "paddle.sdf"))
+
+print("TABLE URI:", table_uri)
+print("Exists:", os.path.exists(os.path.join(assets_dir, "air_hockey_table", "table.xml")))
+print("PADDLE URI:", paddle_uri)
+print("Exists:", os.path.exists(os.path.join(assets_dir, "paddle", "paddle.sdf")))
 
 yaml = """
 directives:
@@ -87,6 +93,4 @@ os.makedirs(os.path.dirname(out_path), exist_ok=True)
 with open(out_path, "w") as f:
     f.write(dedent(yaml).lstrip())
 
-print("Wrote directives to:", out_path)
-print("Table URI:", table_uri)
-print("Paddle URI:", paddle_uri)
+print("Wrote directives →", out_path)
