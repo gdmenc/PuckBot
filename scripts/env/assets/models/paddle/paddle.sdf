@@ -1,34 +1,26 @@
-<sdf version="1.7">
+<sdf xmlns:drake="drake.mit.edu" version="1.5">
   <model name="paddle">
     <link name="paddle_body_link">
       <pose>0 0 0 0 0 0</pose>
-
       <inertial>
-        <mass>0.05</mass>
+        <mass>4.4624E-01</mass>
         <inertia>
-          <ixx>0.002</ixx>
-          <iyy>0.002</iyy>
-          <izz>0.01</izz>
+          <ixx>5.4284E-04</ixx>
+          <ixy>-4.6051E-10</ixy>
+          <ixz>1.0021E-06</ixz>
+          <iyy>5.4291E-04</iyy>
+          <iyz>-5.5855E-07</iyz>
+          <izz>4.4598E-04</izz>
         </inertia>
       </inertial>
-
-      <collision name="paddle_collision">
-        <geometry>
-          <box>
-            <size>0.04 0.01 0.08</size>
-          </box>
-        </geometry>
-      </collision>
-
       <visual name="visual">
         <geometry>
           <mesh>
             <uri>paddle.obj</uri>
-            <scale>0.01 0.01 0.01</scale>
+            <scale>2.0000E-02 2.0000E-02 2.0000E-02</scale>
           </mesh>
         </geometry>
       </visual>
-
     </link>
   </model>
 </sdf>

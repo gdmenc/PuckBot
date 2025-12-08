@@ -13,8 +13,14 @@ directives:
 
   ### TABLE ###
   - add_model:
-      name: table
-      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/air_hockey_table/table.xml
+      name: air_hockey_table
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/air_hockey_table/table.sdf
+  - add_weld:
+      parent: world
+      child: air_hockey_table::table_body
+      X_PC:
+        translation: [0.0, 0.0, 0.11]
+        rotation: !Rpy { deg: [0, 0, 0] }
 
   ### LEFT IIWA ###
   - add_model:
@@ -66,7 +72,7 @@ directives:
       parent: world
       child: puck::puck_body_link
       X_PC:
-        translation: [0.0, 0.0, 0.04]
+        translation: [0.0, 0.0, 0.11]
         rotation: !Rpy { deg: [0, 0, 0] }
 
   ### FREE PADDLES ###
@@ -77,6 +83,16 @@ directives:
       parent: world
       child: left_paddle::paddle_body_link
       X_PC:
-        translation: [0.0, 0.0, 0.04]
+        translation: [-0.4, 0.0, 0.11]
+        rotation: !Rpy { deg: [0, 0, 0] }
+
+  - add_model:
+      name: right_paddle
+      file: file:///Users/gdmen/MIT/F2025/6.4210/PuckBot/scripts/env/assets/models/paddle/paddle.sdf
+  - add_weld:
+      parent: world
+      child: right_paddle::paddle_body_link
+      X_PC:
+        translation: [0.4, 0.0, 0.11]
         rotation: !Rpy { deg: [0, 0, 0] }
 

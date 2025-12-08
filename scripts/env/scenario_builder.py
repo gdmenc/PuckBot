@@ -10,7 +10,7 @@ repo_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 assets_dir = os.path.join(repo_dir, "scripts", "env", "assets", "models")
 
 ground_uri = file_uri(os.path.join(assets_dir, "ground", "ground.sdf"))
-table_uri = file_uri(os.path.join(assets_dir, "air_hockey_table", "table.xml"))
+table_uri = file_uri(os.path.join(assets_dir, "air_hockey_table", "table.sdf"))
 paddle_uri = file_uri(os.path.join(assets_dir, "paddle", "paddle.sdf"))
 wsg_uri = file_uri(os.path.join(assets_dir, "schunk_wsg_50", "schunk_wsg_50_with_tip.sdf"))
 puck_uri = file_uri(os.path.join(assets_dir, "puck", "puck.sdf"))
@@ -18,7 +18,7 @@ puck_uri = file_uri(os.path.join(assets_dir, "puck", "puck.sdf"))
 print("GROUND URI:", ground_uri)
 print("Exists:", os.path.exists(os.path.join(assets_dir, "ground", "ground.sdf")))
 print("TABLE URI:", table_uri)
-print("Exists:", os.path.exists(os.path.join(assets_dir, "air_hockey_table", "table.xml")))
+print("Exists:", os.path.exists(os.path.join(assets_dir, "air_hockey_table", "table.sdf")))
 print("PADDLE URI:", paddle_uri)
 print("Exists:", os.path.exists(os.path.join(assets_dir, "paddle", "paddle.sdf")))
 print("WSG URI:", wsg_uri)
@@ -42,8 +42,14 @@ directives:
 
   ### TABLE ###
   - add_model:
-      name: table
+      name: air_hockey_table
       file: FILE_TABLE
+  - add_weld:
+      parent: world
+      child: air_hockey_table::table_body
+      X_PC:
+        translation: [0.0, 0.0, 0.11]
+        rotation: !Rpy { deg: [0, 0, 0] }
 
   ### LEFT IIWA ###
   - add_model:
@@ -95,7 +101,7 @@ directives:
       parent: world
       child: puck::puck_body_link
       X_PC:
-        translation: [0.0, 0.0, 0.04]
+        translation: [0.0, 0.0, 0.11]
         rotation: !Rpy { deg: [0, 0, 0] }
 
   ### FREE PADDLES ###
@@ -106,18 +112,20 @@ directives:
       parent: world
       child: left_paddle::paddle_body_link
       X_PC:
-        translation: [0.0, 0.0, 0.04]
+        translation: [-0.4, 0.0, 0.11]
+        rotation: !Rpy { deg: [0, 0, 0] }
+
+  - add_model:
+      name: right_paddle
+      file: FILE_PADDLE
+  - add_weld:
+      parent: world
+      child: right_paddle::paddle_body_link
+      X_PC:
+        translation: [0.4, 0.0, 0.11]
         rotation: !Rpy { deg: [0, 0, 0] }
 
 """
-
-  # - add_model:
-  #     name: right_paddle
-  #     file: FILE_PADDLE
-  #     default_free_body_pose:
-  #       paddle_body_link:
-  #         translation: [-0.10, 0.0, 0.50]
-  #         rotation: !Rpy { deg: [0, 0, 0] }
 
 
 yaml = yaml.replace("FILE_TABLE", table_uri)

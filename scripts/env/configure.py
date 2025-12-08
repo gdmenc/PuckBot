@@ -43,7 +43,7 @@ parser = Parser(builder)
 directives = LoadModelDirectives("scenario/puckbot_scene.yaml")
 ProcessModelDirectives(directives, parser)
 AddFrameTriadIllustration(
-    body=plant.GetBodyByName("table"),
+    body=plant.GetBodyByName("table_body"),
     scene_graph=scene_graph,
     # length=0.15,
     # radius=0.006,
