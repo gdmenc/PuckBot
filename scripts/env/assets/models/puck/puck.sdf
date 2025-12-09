@@ -5,11 +5,15 @@
       <inertial>
         <mass>1.8400E-02</mass>
         <inertia>
-          <ixx>4.5049E-06</ixx>
+          <!-- Increased ixx and iyy by 1000x to prevent tipping/rotation -->
+          <!-- Original: 4.5049E-06, New: 4.5049E-03 -->
+          <!-- This makes puck very resistant to roll/pitch -->
+          <ixx>4.5049E-03</ixx>
           <ixy>-0.0000E+00</ixy>
           <ixz>1.7233E-24</ixz>
-          <iyy>4.5049E-06</iyy>
+          <iyy>4.5049E-03</iyy>
           <iyz>3.2042E-24</iyz>
+          <!-- Keep izz (yaw inertia) original for free rotation -->
           <izz>8.9822E-06</izz>
         </inertia>
       </inertial>
