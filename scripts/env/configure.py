@@ -197,6 +197,43 @@ def create_air_hockey_simulation(
     
     plant.Finalize()
     
+    # ========================================
+    # COLLISION FILTERING (inspired by MuJoCo air_hockey_challenge)
+    # ========================================
+    # Exclude puck-table surface collisions to achieve frictionless motion
+    # Similar to MuJoCo's: <exclude body1="puck" body2="table_surface"/>
+    try:
+        from pydrake.geometry import CollisionFilterDeclaration, GeometrySet
+        
+        # Get puck body and its geometries
+        puck_model = plant.GetModelInstanceByName("puck")
+        puck_body = plant.GetBodyByName("puck_body_link", puck_model)
+        puck_geom_ids = plant.GetCollisionGeometriesForBody(puck_body)
+        
+        # Get table body and its geometries
+        table_model = plant.GetModelInstanceByName("air_hockey_table")
+        table_body = plant.GetBodyByName("table_body", table_model)
+        table_geom_ids = plant.GetCollisionGeometriesForBody(table_body)
+        
+        if len(puck_geom_ids) > 0 and len(table_geom_ids) > 0:
+            # Create filter declaration to exclude puck-table collisions
+            puck_set = GeometrySet(puck_geom_ids)
+            table_set = GeometrySet(table_geom_ids)
+            
+            filter_decl = CollisionFilterDeclaration()
+            filter_decl.ExcludeBetween(puck_set, table_set)
+            
+            # Apply to SceneGraph
+            scene_graph.collision_filter_manager().Apply(filter_decl)
+            
+            print("[INFO] Applied collision filter: puck-table surface collisions excluded")
+            print(f"      Puck geometries: {len(puck_geom_ids)}, Table geometries: {len(table_geom_ids)}")
+        else:
+            print(f"[WARNING] Could not apply collision filter (puck geoms: {len(puck_geom_ids)}, table geoms: {len(table_geom_ids)})")
+    except Exception as e:
+        print(f"[WARNING] Failed to set up collision filtering: {e}")
+    # ========================================
+    
     # Game scoring system
     from scripts.env.game_systems import GameScoreSystem
     
@@ -249,14 +286,22 @@ def create_air_hockey_simulation(
     
     simulator.Initialize()
     
-    # Set puck VELOCITY after Initialize (so it doesn't get reset)
+    # Set puck POSITION and VELOCITY after Initialize (so they don't get reset)
     try:
         puck_model = plant.GetModelInstanceByName("puck")
         puck_body = plant.GetBodyByName("puck_body_link", puck_model)
         context = simulator.get_mutable_context()
         plant_context = plant.GetMyMutableContextFromRoot(context)
         
-        # Set initial velocity [vx, vy, 0] - realistic air hockey speed
+        # Set position at table surface
+        puck_position = np.array([0.0, 0.0, 0.11])
+        plant.SetFreeBodyPose(
+            plant_context,
+            puck_body,
+            RigidTransform(puck_position)
+        )
+        
+        # Set initial velocity [vx, vy, 0]
         velocity = np.array([0.5, 0.3, 0.0])
         v = np.concatenate([np.zeros(3), velocity])  # [wx, wy, wz, vx, vy, vz]
         
@@ -265,8 +310,24 @@ def create_air_hockey_simulation(
             puck_body,
             SpatialVelocity(v)
         )
-        print(f"[INFO] Puck initialized with velocity: {velocity}")
+        
+        # Validation: verify puck state was set correctly
+        actual_pose = plant.EvalBodyPoseInWorld(plant_context, puck_body)
+        actual_vel = plant.EvalBodySpatialVelocityInWorld(plant_context, puck_body)
+        actual_pos = actual_pose.translation()
+        actual_v = actual_vel.translational()
+        
+        print(f"[INFO] Puck initialized:")
+        print(f"  Position: [{actual_pos[0]:.3f}, {actual_pos[1]:.3f}, {actual_pos[2]:.3f}]")
+        print(f"  Velocity: [{actual_v[0]:.3f}, {actual_v[1]:.3f}, {actual_v[2]:.3f}]")
+        
+        # Assert puck is on table
+        assert abs(actual_pos[2] - 0.11) < 0.02, f"Puck Z={actual_pos[2]:.3f}, expected ~0.11"
+        assert np.linalg.norm(actual_v[:2]) > 0.1, f"Puck velocity too low: {actual_v[:2]}"
+        
     except Exception as e:
-        print(f"[WARNING] Could not set puck velocity: {e}")
+        print(f"[ERROR] Could not initialize puck: {e}")
+        import traceback
+        traceback.print_exc()
     
     return simulator, meshcat, plant, diagram

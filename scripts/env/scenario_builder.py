@@ -116,7 +116,7 @@ directives:
       parent: right_wsg::body
       child: right_paddle::paddle_body_link
       X_PC:
-        translation: [0.0, 0.08, -0.05]
+        translation: [0.0, 0.08, -0.07]
         rotation: !Rpy {{ deg: [0, 0, 0] }}
 """
     else:
@@ -138,7 +138,7 @@ directives:
       parent: left_wsg::body
       child: left_paddle::paddle_body_link
       X_PC:
-        translation: [0.0, 0.08, -0.05]
+        translation: [0.0, 0.08, -0.07]
         rotation: !Rpy {{ deg: [0, 0, 0] }}
 """
         else:

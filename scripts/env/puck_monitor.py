@@ -16,12 +16,16 @@ class PredictivePuckMonitor:
     """
     def __init__(self, plant, puck_body, 
                  x_bounds=(-1.0, 1.0), y_bounds=(-0.55, 0.55),
-                 restitution=0.95, dt=0.01, max_velocity=0.3):
+                 restitution=1.0, dt=0.01, max_velocity=0.3):
+        """
+        Args:
+            restitution: 1.0 for perfect elastic (conservation of momentum)
+        """
         self.plant = plant
         self.puck_body = puck_body
         self.x_min, self.x_max = x_bounds  # Goal boundaries
         self.y_min, self.y_max = y_bounds  # Wall boundaries
-        self.restitution = restitution
+        self.restitution = restitution  # Should be 1.0 for perfect elastic
         self.dt = dt
         self.table_height = 0.11
         self.max_velocity = max_velocity  # Max puck speed
@@ -69,25 +73,30 @@ class PredictivePuckMonitor:
             self.goal_pause = self.goal_pause_duration
             return
         
-        # Check for WALL boundaries (Y) - predict crossing and bounce
+        # Check for WALL boundaries (Y) - perfect elastic collision
+        # Conservation of momentum: just flip the perpendicular component
         v_new = v.copy()
         bounced = False
         
         if next_pos[1] < self.y_min:
-            # Will cross bottom wall - reflect Y velocity
-            v_new[1] = abs(v[1]) * self.restitution
+            # Will cross bottom wall - flip Y velocity (perfect elastic)
+            v_new[1] = abs(v[1])  # Make positive (bounce upward)
             bounced = True
-            print(f"[BOUNCE] Bottom wall (y={next_pos[1]:.3f})")
+            print(f"[BOUNCE] Bottom wall - vel flipped to +{abs(v[1]):.3f}")
         elif next_pos[1] > self.y_max:
-            # Will cross top wall - reflect Y velocity
-            v_new[1] = -abs(v[1]) * self.restitution
+            # Will cross top wall - flip Y velocity (perfect elastic)
+            v_new[1] = -abs(v[1])  # Make negative (bounce downward)
             bounced = True
-            print(f"[BOUNCE] Top wall (y={next_pos[1]:.3f})")
+            print(f"[BOUNCE] Top wall - vel flipped to -{abs(v[1]):.3f}")
         
-        # Always clamp velocities and force Z=0 (2D motion)
-        v_new[0] = np.clip(v_new[0], -self.max_velocity, self.max_velocity)
-        v_new[1] = np.clip(v_new[1], -self.max_velocity, self.max_velocity)
-        v_new[2] = 0.0
+        # Enforce 2D motion and velocity limits
+        # NOTE: NO FRICTION - speed is only clamped, not reduced
+        v_new[2] = 0.0  # Force Z velocity to zero
+        
+        # Clamp to max velocity (safety only, not friction)
+        speed = np.linalg.norm(v_new[:2])
+        if speed > self.max_velocity:
+            v_new[:2] = v_new[:2] * (self.max_velocity / speed)
         
         # Update velocity if changed
         if bounced or np.linalg.norm(v_new - v) > 0.001:
