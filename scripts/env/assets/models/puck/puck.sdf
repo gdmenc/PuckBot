@@ -5,15 +5,11 @@
       <inertial>
         <mass>1.8400E-02</mass>
         <inertia>
-          <!-- Increased ixx and iyy by 1000x to prevent tipping/rotation -->
-          <!-- Original: 4.5049E-06, New: 4.5049E-03 -->
-          <!-- This makes puck very resistant to roll/pitch -->
           <ixx>4.5049E-03</ixx>
           <ixy>-0.0000E+00</ixy>
           <ixz>1.7233E-24</ixz>
           <iyy>4.5049E-03</iyy>
           <iyz>3.2042E-24</iyz>
-          <!-- Keep izz (yaw inertia) original for free rotation -->
           <izz>8.9822E-06</izz>
         </inertia>
       </inertial>
@@ -21,11 +17,11 @@
         <geometry>
           <cylinder>
             <radius>0.03</radius>
-            <length>0.01</length>
+            <length>0.02</length>
           </cylinder>
         </geometry>
         <material>
-          <diffuse>0.8 0.1 0.1 1.0</diffuse>
+          <diffuse>0.0 0.0 0.0 1.0</diffuse>
         </material>
       </visual>
       <!-- Collision: Simple cylinder for bounces, ZERO damping -->
@@ -33,7 +29,7 @@
         <geometry>
           <cylinder>
             <radius>0.03</radius>
-            <length>0.01</length>
+            <length>0.02</length>
           </cylinder>
         </geometry>
         <drake:proximity_properties>
@@ -41,8 +37,8 @@
           <drake:hydroelastic_modulus>1.0e6</drake:hydroelastic_modulus>
           <drake:hunt_crossley_dissipation>0.0</drake:hunt_crossley_dissipation>
           <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
-          <drake:mu_dynamic>0.01</drake:mu_dynamic>
-          <drake:mu_static>0.01</drake:mu_static>
+          <drake:mu_dynamic>0.0</drake:mu_dynamic>
+          <drake:mu_static>0.0</drake:mu_static>
         </drake:proximity_properties>
       </collision>
     </link>

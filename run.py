@@ -5,8 +5,12 @@ from argparse import ArgumentParser
 import time
 import numpy as np
 import sys
+import pickle
+from pathlib import Path
+from datetime import datetime
 
 from scripts.env.configure import create_air_hockey_simulation, initialize_puck, initialize_paddles, initialize_robots
+from scripts.logging.match_logger import MatchLogger
 
 def get_args():
     parser = ArgumentParser(description="Air Hockey Robot Game")
@@ -48,19 +52,37 @@ def get_args():
     )
     parser.add_argument("--skip-grasp", action="store_true", default=True,
                         help="Skip grasping (paddles welded to grippers)")
-    parser.add_argument("--max_puck_velocity", type=float, default=0.3,
-                        help="Maximum puck velocity in m/s (default: 0.3)")
+    parser.add_argument("--max_puck_velocity", type=float, default=5.0,
+                        help="Maximum puck velocity in m/s (default: 5.0)")
+    parser.add_argument("--log", action="store_true", default=False,
+                        help="Enable match logging (default: OFF for performance)")
+    parser.add_argument("--record", action="store_true", default=False,
+                        help="Record animation for replay (default: OFF for performance)")
+    parser.add_argument("--log-dir", type=str, default="logs",
+                        help="Directory for match logs")
     args = parser.parse_args()
     return args
 
 def main():
     args = get_args()
     
+    # AUTO-SET num_arms based on mode:
+    # - hit and defend are single-robot training modes
+    # - tournament is 2-robot competitive mode
+    if args.mode in ["hit", "defend"]:
+        num_arms = 1
+        robot_side = "right"  # Single training robot on right side
+        if args.num_arms != 1:
+            print(f"[INFO] Mode '{args.mode}' requires single robot - overriding num_arms to 1")
+    else:  # tournament
+        num_arms = args.num_arms
+        robot_side = "right" if num_arms == 1 else "right"
+    
     print("="*70)
     print("AIR HOCKEY ROBOT GAME")
     print("="*70)
     print(f"Configuration:")
-    print(f"  Num Arms: {args.num_arms}")
+    print(f"  Num Arms: {num_arms}")
     print(f"  Mode: {args.mode.upper()}")
     print(f"  Time step: {args.time_step}s")
     print(f"  Game duration: {args.game_duration}s")
@@ -70,11 +92,8 @@ def main():
     print("Initializing Environment...")
     print("="*70)
     
-    # Updated to unpack 4 values
-    robot_side = "right" if args.num_arms == 1 else "right"  # For single arm training
-    
     simulator, meshcat, plant, diagram = create_air_hockey_simulation(
-        num_arms=args.num_arms,
+        num_arms=num_arms,
         time_step=args.time_step,
         use_meshcat=not args.no_meshcat,
         skip_grasp=args.skip_grasp,
@@ -83,6 +102,18 @@ def main():
     )
     
     # Positions are now initialized inside create_air_hockey_simulation()
+    
+    # Initialize match logger
+    logger = None
+    if args.log:
+        logger = MatchLogger(log_dir=args.log_dir, mode=args.mode)
+        print(f"[INFO] Match logging enabled - logs will be saved to {args.log_dir}/")
+    
+    # Start recording if enabled
+    if meshcat and args.record:
+        print("[INFO] Animation recording enabled")
+        meshcat.StartRecording()
+        print("[INFO] Recording started - use Animation tab to replay")
     
     if meshcat:
         print(f"\nMeshcat visualization: {meshcat.web_url()}")
@@ -105,7 +136,7 @@ def main():
             if adapter.robot2_model:  # Right
                 robots_to_grasp.append((adapter.robot2_model, "body", 2))
         
-            if args.num_arms == 2 and adapter.robot1_model:  # Left
+            if num_arms == 2 and adapter.robot1_model:  # Left
                 robots_to_grasp.append((adapter.robot1_model, "body", 1))
                 
             for model, frame_name, robot_id in robots_to_grasp:
@@ -152,8 +183,7 @@ def main():
         # Create predictive puck monitor for physics
         from scripts.env.puck_monitor import PredictivePuckMonitor
         
-        # Determine robot side for single-arm modes
-        robot_side = "right" if args.num_arms == 1 else "right"  # Default to right for training
+        # Robot side already set above based on num_arms and mode
         
         puck_monitor = PredictivePuckMonitor(
             plant, puck_body,
@@ -175,28 +205,40 @@ def main():
         robot_models = {}
         gripper_models = {}
         
-        if args.num_arms >= 1:
-            robot_models['right'] = plant.GetModelInstanceByName("right_iiwa")
-            gripper_models['right'] = plant.GetModelInstanceByName("right_wsg")
-            controllers['right'] = ActuatorBasedController(
-                plant, robot_models['right'], gripper_models['right']
-            )
+        # Always create right robot controller (exists in all modes)
+        robot_models['right'] = plant.GetModelInstanceByName("right_iiwa")
+        gripper_models['right'] = plant.GetModelInstanceByName("right_wsg")
+        controllers['right'] = ActuatorBasedController(
+            plant, robot_models['right'], gripper_models['right']
+        )
+        print(f"[INFO] Initialized right robot controller")
+        if logger:
+            logger.add_robot('right')
         
-        if args.num_arms >= 2:
+        # Only create left robot controller if we have 2 arms (tournament mode)
+        if num_arms >= 2:
             robot_models['left'] = plant.GetModelInstanceByName("left_iiwa")
             gripper_models['left'] = plant.GetModelInstanceByName("left_wsg")
             controllers['left'] = ActuatorBasedController(
                 plant, robot_models['left'], gripper_models['left']
             )
+            print(f"[INFO] Initialized left robot controller")
+            if logger:
+                logger.add_robot('left')
         
         # Monitor puck state during simulation
         current_time = 0.0
         last_print_time = 0.0
         last_control_time = 0.0
         print_interval = 0.5
-        control_interval = 0.02  # 50 Hz control for faster reactions
+        control_interval = 0.01  # 100 Hz control for real-time tracking (was 0.02/50Hz)
+        
+        # Track last puck position for smart replanning
+        last_puck_pos = None
+        replan_threshold = 0.15  # meters - increased from 0.05 to reduce excessive replanning
         
         print("[INFO] Starting simulation with actuator control...")
+        print(f"[INFO] Control rate: {1.0/control_interval:.0f} Hz")
         
         while current_time < args.game_duration:
             simulator.AdvanceTo(current_time + 0.01)
@@ -214,46 +256,141 @@ def main():
             puck_pos = np.array(pose.translation())
             puck_vel = np.array(vel.translational())
             
+            # Update logger periodically (not every frame - too expensive!)
+            # Only update every 0.1 seconds to avoid slowdown
+            if logger and current_time - getattr(logger, '_last_update_time', 0) >= 0.1:
+                # Cache gripper bodies if not already cached
+                if not hasattr(logger, '_gripper_bodies'):
+                    logger._gripper_bodies = {}
+                    for name, gripper_model in gripper_models.items():
+                        logger._gripper_bodies[name] = plant.GetBodyByName("body", gripper_model)
+                
+                # Get robot positions efficiently
+                robot_positions = {}
+                for name, gripper_body in logger._gripper_bodies.items():
+                    gripper_pose = plant.EvalBodyPoseInWorld(plant_context, gripper_body)
+                    robot_positions[name] = np.array(gripper_pose.translation())
+                
+                logger.update(current_time, puck_pos, puck_vel, robot_positions)
+                logger._last_update_time = current_time
+                
+                # Detect puck contacts - ACCURATE detection (visual overlap only)
+                # Paddle radius ~0.05m + puck radius 0.04m = 0.09m when touching
+                # Contact = when center-to-center distance < 0.06m (accounting for gripper offset)
+                for name, position in robot_positions.items():
+                    distance_to_puck = np.linalg.norm(position[:2] - puck_pos[:2])
+                    if distance_to_puck < 0.06:  # TRUE contact only (was 0.12 - too large!)
+                        if not hasattr(logger, '_last_contact') or logger._last_contact.get(name, 0) < current_time - 0.5:
+                            was_planned = current_time - getattr(controllers.get(name), 'last_intercept_time', 0) < 0.5
+                            logger.robot_stats[name].record_puck_contact(was_planned)
+                            if not hasattr(logger, '_last_contact'):
+                                logger._last_contact = {}
+                            logger._last_contact[name] = current_time
+            
+            # Goal detection (fast, check every frame)
+            goal_scored = False
+            scoring_robot = None
+            opponent_robot = None
+            
+            # CRITICAL: Goal positions vs. which robot scores
+            # - Left goal at X = -1.05 (negative) → RIGHT robot scores
+            # - Right goal at X = +1.05 (positive) → LEFT robot scores
+            if puck_pos[0] < -1.05:  # Puck entered left goal
+                goal_scored = True
+                scoring_robot = 'right'  # RIGHT robot scored! (was attacking left goal)
+                opponent_robot = 'left'
+            elif puck_pos[0] > 1.05:  # Puck entered right goal
+                goal_scored = True
+                scoring_robot = 'left'  # LEFT robot scored! (was attacking right goal)
+                opponent_robot = 'right'
+            
+            if goal_scored:
+                if logger:
+                    logger.record_goal(scoring_robot, opponent_robot)
+                
+                # Reset puck to center
+                initialize_puck(simulator, plant, plant.GetModelInstanceByName("puck"))
+                print(f"\n[GOAL] {scoring_robot.upper()} scored!")
+                print(f"Score: Right {logger.final_score['right'] if logger else '?'} - {logger.final_score['left'] if logger else '?'} Left\n")
+            
             # Robot actuator control
             if current_time - last_control_time >= control_interval:
                 # Save puck state for validation
                 puck_z_before = puck_pos[2]
+                
+                # Check if we need to replan (puck moved significantly)
+                should_replan = False
+                if last_puck_pos is None:
+                    should_replan = True
+                else:
+                    puck_moved = np.linalg.norm(puck_pos[:2] - last_puck_pos[:2])
+                    if puck_moved > replan_threshold:
+                        should_replan = True
                 
                 # Control right robot via velocities (simpler than actuators)
                 if 'right' in controllers:
                     q_right = plant.GetPositions(plant_context, robot_models['right'])
                     qd_right = plant.GetVelocities(plant_context, robot_models['right'])
                     
-                    has_cmd, torques = controllers['right'].update(
-                        puck_pos, puck_vel, q_right, qd_right, 
-                        plant_context, robot_x_side=1.0
-                    )
+                    # Only call update if we should replan
+                    if should_replan:
+                        # Track strike attempt for logging
+                        if logger:
+                            logger.robot_stats['right'].record_strike_attempt()
+                        
+                        has_cmd, torques = controllers['right'].update(
+                            puck_pos, puck_vel, q_right, qd_right, 
+                            plant_context, robot_x_side=1.0
+                        )
+                    else:
+                        has_cmd = controllers['right'].target_q is not None
                     
-                    # Quick fix: Use velocity control instead of torques
+                    # Use high-gain velocity control for fast, responsive motion
                     if has_cmd and controllers['right'].target_q is not None:
                         # Compute desired velocity from position error
                         position_error = controllers['right'].target_q - q_right
-                        desired_velocity = position_error * 3.5  # Increased from 2.0 for faster reaction
-                        desired_velocity = np.clip(desired_velocity, -1.5, 1.5)  # Increased speed limit
+                        # MUCH higher gain for very fast response (was 6.0, now 8.0)
+                        desired_velocity = position_error * 8.0
+                        # Very high velocity limit to intercept fast pucks (was 2.5, now 4.0)
+                        desired_velocity = np.clip(desired_velocity, -4.0, 4.0)
                         
                         # Set velocity directly
                         plant.SetVelocities(plant_context, robot_models['right'], desired_velocity)
+                    
+                    # Gripper fingers are now WELDED - no position control needed!
+                    # DON'T zero velocity - paddle needs momentum to hit puck!
+                    # Gripper inherits arm velocity for proper force transfer
                 
                 # Control left robot
                 if 'left' in controllers:
                     q_left = plant.GetPositions(plant_context, robot_models['left'])
                     qd_left = plant.GetVelocities(plant_context, robot_models['left'])
                     
-                    has_cmd, torques = controllers['left'].update(
-                        puck_pos, puck_vel, q_left, qd_left,
-                        plant_context, robot_x_side=-1.0
-                    )
+                    if should_replan:
+                        # Track strike attempt for logging
+                        if logger:
+                            logger.robot_stats['left'].record_strike_attempt()
+                        
+                        has_cmd, torques = controllers['left'].update(
+                            puck_pos, puck_vel, q_left, qd_left,
+                            plant_context, robot_x_side=-1.0
+                        )
+                    else:
+                        has_cmd = controllers['left'].target_q is not None
                     
                     if has_cmd and controllers['left'].target_q is not None:
                         position_error = controllers['left'].target_q - q_left
-                        desired_velocity = position_error * 3.5  # Faster reaction
-                        desired_velocity = np.clip(desired_velocity, -1.5, 1.5)
+                        desired_velocity = position_error * 6.0  # Increased from 5.0 for faster response
+                        desired_velocity = np.clip(desired_velocity, -2.5, 2.5)
                         plant.SetVelocities(plant_context, robot_models['left'], desired_velocity)
+                    
+                    # Gripper fingers are now WELDED - no position control needed!
+                    # DON'T zero velocity - paddle needs momentum to hit puck!
+                    # Gripper inherits arm velocity for proper force transfer
+                
+                # Update last puck position for next replan check
+                if should_replan:
+                    last_puck_pos = puck_pos.copy()
                 
                 # Validate puck wasn't affected
                 pose_check = plant.EvalBodyPoseInWorld(plant_context, puck_body)
@@ -305,6 +442,47 @@ def main():
     
     print("\n" + "="*70)
     print("Simulation Complete")
+    print("="*70)
+    
+    # Save match log and print summary
+    if logger:
+        print("\n" + "="*70)
+        print("SAVING MATCH DATA")
+        print("="*70)
+        
+        logger.print_summary()
+        log_file = logger.save_match_log()
+        print(f"\n✅ Match log saved: {log_file}")
+    
+    # Save animation recording
+    if meshcat and args.record:
+        try:
+            print(f"\n[RECORDING] Saving animation...")
+            
+            # Create recordings directory with mode-specific subdirectory
+            mode_dir_name = f"{args.mode.lower()}_mode"
+            recordings_dir = Path("recordings") / mode_dir_name
+            recordings_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save recording
+            match_id = logger.match_id if logger else datetime.now().strftime("%Y%m%d_%H%M%S")
+            recording_file = recordings_dir / f"match_{match_id}.html"
+            
+            # Stop and publish recording
+            meshcat.StopRecording()
+            meshcat.PublishRecording()
+            
+            # Also save to file
+            html = meshcat.StaticHtml()
+            recording_file.write_text(html)
+            
+            print(f"✅ Animation saved: {recording_file}")
+            print(f"✅ Animation available in Meshcat Animation tab (use Controls)")
+            print(f"   Recording directory: {recordings_dir}")
+            
+        except Exception as e:
+            print(f"[WARNING] Could not save animation: {e}")
+    
     print("="*70)
     
     if meshcat:

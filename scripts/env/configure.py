@@ -103,11 +103,11 @@ def initialize_robots(plant, plant_context, num_arms=2):
     # we need gripper at appropriate height
     q_right = np.array([
         0.0,     # J1: base rotation
-        -np.pi/4,     # J2: shoulder - angled to reach table
+        -np.pi/3,     # J2: shoulder - angled to reach table
         0.0,     # J3: elbow rotation
-        -np.pi/4,    # J4: elbow bend
+        np.pi/2,    # J4: elbow bend
         0.0,     # J5: wrist rotation
-        0.0,     # J6: wrist bend to align paddle with table
+        np.pi/3,     # J6: wrist bend to align paddle with table
         0.0      # J7: wrist rotation
     ])
     
@@ -115,23 +115,19 @@ def initialize_robots(plant, plant_context, num_arms=2):
         right_iiwa = plant.GetModelInstanceByName("right_iiwa")
         plant.SetPositions(plant_context, right_iiwa, q_right)
         
-        # Close gripper fingers to grip paddle stem (radius 0.02m)
-        # WSG fingers are at indices 7, 8 in the full state vector
-        right_wsg = plant.GetModelInstanceByName("right_wsg")
-        # Gripper position: tighter grip (0.015 for better hold)
-        plant.SetPositions(plant_context, right_wsg, np.array([0.015, -0.015]))
+        # Gripper fingers are now WELDED (fixed joints) - no position setting needed!
     except Exception as e:
         print(f"[WARNING] Could not set right robot position: {e}")
     
     if num_arms == 2:
         # Left robot - mirror configuration
         q_left = np.array([
-            -np.pi,   # J1: base rotation (facing opposite)
-            np.pi/2,     # J2: shoulder
+            0.0,   # J1: base rotation (facing opposite)
+            -np.pi/3,     # J2: shoulder
             0.0,     # J3: elbow rotation
-            0.0,    # J4: elbow bend
+            np.pi/2,    # J4: elbow bend
             0.0,     # J5: wrist rotation
-            0.0,     # J6: wrist bend
+            np.pi/3,     # J6: wrist bend
             0.0      # J7: wrist rotation
         ])
         
@@ -139,9 +135,7 @@ def initialize_robots(plant, plant_context, num_arms=2):
             left_iiwa = plant.GetModelInstanceByName("left_iiwa")
             plant.SetPositions(plant_context, left_iiwa, q_left)
             
-            # Close left gripper tighter
-            left_wsg = plant.GetModelInstanceByName("left_wsg")
-            plant.SetPositions(plant_context, left_wsg, np.array([0.015, -0.015]))
+            # Gripper fingers are now WELDED (fixed joints) - no position setting needed!
         except Exception as e:
             print(f"[WARNING] Could not set left robot position: {e}")
 
@@ -232,6 +226,85 @@ def create_air_hockey_simulation(
             print(f"      Puck geometries: {len(puck_geom_ids)}, Table geometries: {len(table_geom_ids)}")
         else:
             print(f"[WARNING] Could not apply collision filter (puck geoms: {len(puck_geom_ids)}, table geoms: {len(table_geom_ids)})")
+        
+        # Also filter out puck collisions with robot ARM (not paddle!)
+        # Only the PADDLE should hit the puck, not the arm links
+        try:
+            # Get robot models
+            robot_models_to_filter = []
+            try:
+                robot_models_to_filter.append(plant.GetModelInstanceByName("right_iiwa"))
+            except:
+                pass
+            try:
+                robot_models_to_filter.append(plant.GetModelInstanceByName("left_iiwa"))
+            except:
+                pass
+            
+            for robot_model in robot_models_to_filter:
+                # Get all robot arm link geometries (excluding paddle/gripper)
+                robot_geom_ids = []
+                for body_index in plant.GetBodyIndices(robot_model):
+                    body = plant.get_body(body_index)
+                    body_name = body.name()
+                    
+                    # EXCLUDE paddle - we WANT puck-paddle collisions!
+                    # Only filter out the ARM links
+                    if "iiwa_link" in body_name:  # Only arm links, not gripper/paddle
+                        geoms = plant.GetCollisionGeometriesForBody(body)
+                        robot_geom_ids.extend(geoms)
+                
+                if len(robot_geom_ids) > 0 and len(puck_geom_ids) > 0:
+                    arm_set = GeometrySet(robot_geom_ids)
+                    puck_set = GeometrySet(puck_geom_ids)
+                    
+                    filter_decl = CollisionFilterDeclaration()
+                    filter_decl.ExcludeBetween(arm_set, puck_set)
+                    scene_graph.collision_filter_manager().Apply(filter_decl)
+                    
+                    # Get model name for logging
+                    model_name = "right_iiwa" if robot_model == robot_models_to_filter[0] else "left_iiwa"
+                    print(f"[INFO] Filtered puck-arm collisions for {model_name}: {len(robot_geom_ids)} arm links")
+        except Exception as e:
+            print(f"[WARNING] Could not filter robot arm collisions: {e}")
+        
+        # ========================================================================
+        # FILTER ARM-TABLE COLLISIONS (CRITICAL for level paddle!)
+        # ========================================================================
+        # The robot arm (especially elbow) can hit the table, preventing level paddle
+        # Filter these collisions so IK can achieve flat orientation
+        try:
+            table_geom_ids = []
+            try:
+                table_model = plant.GetModelInstanceByName("air_hockey_table")
+                for body_index in plant.GetBodyIndices(table_model):
+                    geoms = plant.GetCollisionGeometriesForBody(plant.get_body(body_index))
+                    table_geom_ids.extend(geoms)
+            except:
+                pass
+            
+            robot_arm_geom_ids = []
+            for robot_model in robot_models_to_filter:
+                for body_index in plant.GetBodyIndices(robot_model):
+                    body = plant.get_body(body_index)
+                    body_name = body.name()
+                    # ONLY filter ARM links, NOT paddle/gripper
+                    if "iiwa_link" in body_name:
+                        geoms = plant.GetCollisionGeometriesForBody(body)
+                        robot_arm_geom_ids.extend(geoms)
+            
+            if len(table_geom_ids) > 0 and len(robot_arm_geom_ids) > 0:
+                arm_set = GeometrySet(robot_arm_geom_ids)
+                table_set = GeometrySet(table_geom_ids)
+                
+                filter_decl = CollisionFilterDeclaration()
+                filter_decl.ExcludeBetween(arm_set, table_set)
+                scene_graph.collision_filter_manager().Apply(filter_decl)
+                
+                print(f"[INFO] Filtered arm-table collisions: {len(robot_arm_geom_ids)} arm links")
+        except Exception as e:
+            print(f"[WARNING] Could not filter arm-table collisions: {e}")
+            
     except Exception as e:
         print(f"[WARNING] Failed to set up collision filtering: {e}")
     # ========================================

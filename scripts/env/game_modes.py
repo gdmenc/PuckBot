@@ -29,7 +29,7 @@ class PuckInitializer:
     - TOURNAMENT: Random center spawn with random velocity (competitive play)
     """
     
-    def __init__(self, mode, robot_side="right", table_bounds=None):
+    def __init__(self, mode=GameMode.TOURNAMENT, robot_side="right", table_bounds=None, min_speed=2.0, max_speed=3.0):
         """
         Args:
             mode: One of GameMode constants
@@ -92,8 +92,8 @@ class PuckInitializer:
         
         y = np.random.uniform(-0.4, 0.4)
         
-        # Velocity: Always toward robot's goal
-        speed = np.random.uniform(0.4, 1.0)  # m/s
+        # Velocity: Always toward robot's goal (VERY FAST for exciting gameplay)
+        speed = np.random.uniform(2.0, 2.5)  # m/s - super fast!
         angle = np.random.uniform(-0.75, 0.75)  # radians (±43 degrees)
         
         vx = sign * np.cos(angle) * speed
@@ -102,7 +102,7 @@ class PuckInitializer:
         position = np.array([x, y, self.table_height])
         velocity = np.array([vx, vy, 0.0])
         
-        print(f"[DEFEND MODE] Puck spawned at [{x:.3f}, {y:.3f}] moving toward robot (vx={vx:.3f})")
+        print(f"[DEFEND MODE] Puck spawned at [{x:.3f}, {y:.3f}] moving toward robot (vx={vx:.3f}, speed={speed:.2f} m/s)")
         
         return position, velocity
     
@@ -134,13 +134,13 @@ class PuckInitializer:
         
         return position, velocity
     
-    def _tournament_init(self, min_speed=0.4, max_speed=0.6):
+    def _tournament_init(self, min_speed=2.0, max_speed=2.0):
         """
-        Tournament mode: Random center spawn with random velocity.
+        Tournament mode: Random center spawn with constant 2.0 m/s speed.
         
         Args:
-            min_speed: Minimum puck speed (m/s)
-            max_speed: Maximum puck speed (m/s)
+            min_speed: Minimum puck speed (m/s) - set to 2.0 for fast gameplay
+            max_speed: Maximum puck speed (m/s) - set to 2.0 for consistent speed
             
         Returns:
             tuple: (position, velocity)
@@ -148,15 +148,15 @@ class PuckInitializer:
         # Center spawn
         position = np.array([0.0, 0.0, self.table_height])
         
-        # Random direction and speed
+        # Random direction with CONSTANT 2.0 m/s speed
         angle = np.random.uniform(0, 2 * np.pi)
-        speed = np.random.uniform(min_speed, max_speed)
+        speed = 2.0  # CONSTANT speed for consistency
         
         vx = speed * np.cos(angle)
         vy = speed * np.sin(angle)
         
         velocity = np.array([vx, vy, 0.0])
         
-        print(f"[TOURNAMENT MODE] Puck at center with velocity: [{vx:.3f}, {vy:.3f}] m/s")
+        print(f"[TOURNAMENT MODE] Puck at center with velocity: [{vx:.3f}, {vy:.3f}], speed={speed:.2f} m/s")
         
         return position, velocity

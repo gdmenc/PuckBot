@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <sdf xmlns:drake="drake.mit.edu" version="1.5">
   <model name="paddle">
     <link name="paddle_body_link">
@@ -6,7 +7,7 @@
         <mass>4.4624E-01</mass>
         <inertia>
           <ixx>5.4284E-04</ixx>
-          <ixy>-4.6051E-10</ixy>
+           <ixy>-4.6051E-10</ixy>
           <ixz>1.0021E-06</ixz>
           <iyy>5.4291E-04</iyy>
           <iyz>-5.5855E-07</iyz>
@@ -20,6 +21,9 @@
             <scale>2.0000E-02 2.0000E-02 2.0000E-02</scale>
           </mesh>
         </geometry>
+        <material>
+          <diffuse>1.0 1.0 1.0 1.0</diffuse>
+        </material>
       </visual>
       <!-- Collision: Small flat cylinder (head) + tall cylinder (stem) -->
       <collision name="head">
@@ -33,25 +37,27 @@
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus>1.0e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>0.0</drake:hunt_crossley_dissipation>
           <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
-          <drake:mu_dynamic>0.3</drake:mu_dynamic>
-          <drake:mu_static>0.3</drake:mu_static>
+          <drake:mu_dynamic>0.0</drake:mu_dynamic>
+          <drake:mu_static>0.0</drake:mu_static>
         </drake:proximity_properties>
       </collision>
       <collision name="stem">
         <pose>0 0 0.04 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.02</radius>
-            <length>0.09</length>
+            <radius>0.03</radius>
+            <length>0.1</length>
           </cylinder>
         </geometry>
         <drake:proximity_properties>
           <drake:compliant_hydroelastic/>
           <drake:hydroelastic_modulus>1.0e6</drake:hydroelastic_modulus>
+          <drake:hunt_crossley_dissipation>0.0</drake:hunt_crossley_dissipation>
           <drake:mesh_resolution_hint>0.01</drake:mesh_resolution_hint>
-          <drake:mu_dynamic>0.3</drake:mu_dynamic>
-          <drake:mu_static>0.3</drake:mu_static>
+          <drake:mu_dynamic>0.0</drake:mu_dynamic>
+          <drake:mu_static>0.0</drake:mu_static>
         </drake:proximity_properties>
       </collision>
     </link>

@@ -27,7 +27,8 @@ class GameEvaluator:
             "goals_scored": 0,
             "current_rally_hits": 0,
             "hits_per_life": [],
-            "game_length": 0.0
+            "game_length": 0.0,
+            "paddle_hits": 0
         }
         self.prev_puck_state: Optional[PuckState] = None
         self.last_hit_time = -1.0
@@ -52,7 +53,7 @@ class GameEvaluator:
         current_time = self.env.simulator.get_context().get_time()
         puck_state = self.controller.get_puck_state()
         paddle_pose = self.env.get_paddle_pose()
-        paddle_pos = paddle_pos.translation()
+        paddle_pos = paddle_pose.translation()
 
         self._check_for_goals(puck_state)
         hit_occurred = self._check_for_hit(puck_state, paddle_pos, current_time)

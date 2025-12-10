@@ -18,7 +18,7 @@ class PredictivePuckMonitor:
     """
     def __init__(self, plant, puck_body, 
                  x_bounds=(-1.0, 1.0), y_bounds=(-0.52, 0.52),
-                 restitution=1.0, dt=0.01, max_velocity=0.3,
+                 restitution=1.0, dt=0.01, max_velocity=5.0,
                  game_mode=GameMode.TOURNAMENT, robot_side="right"):
         """
         Args:
@@ -150,9 +150,29 @@ class PredictivePuckMonitor:
             )
         
         # Position correction if out of bounds (safety check)
+        pos_corrected = False
         if pos[1] < self.y_min or pos[1] > self.y_max:
             pos[1] = np.clip(pos[1], self.y_min, self.y_max)
+            pos_corrected = True
+        
+        # CRITICAL: Enforce Z-axis (table height) to prevent puck glitching through table
+        # This is the most important constraint - puck must ALWAYS stay on table surface
+        z_tolerance = 0.005  # 5mm tolerance
+        if abs(pos[2] - self.table_height) > z_tolerance:
+            print(f"[PHYSICS FIX] Puck Z={pos[2]:.4f}, correcting to table height {self.table_height}")
             pos[2] = self.table_height
+            pos_corrected = True
+            
+            # Also zero out Z velocity if puck is being pushed down
+            if v[2] < -0.01:
+                print(f"  Zeroing downward Z velocity: {v[2]:.4f}")
+                v_new[2] = 0.0
+                v_spatial = np.concatenate([np.zeros(3), v_new])
+                self.plant.SetFreeBodySpatialVelocity(
+                    plant_context, self.puck_body, SpatialVelocity(v_spatial)
+                )
+        
+        if pos_corrected:
             self.plant.SetFreeBodyPose(
                 plant_context, self.puck_body, RigidTransform(pos)
             )
